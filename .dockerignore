@@ -47,8 +47,10 @@ logs/
 # Large raw dataset downloads (re-fetched at runtime by src/data/loader.py)
 data/raw/
 
-# Intermediate build products not needed for serving
-data/interim/
+# Intermediate build products not needed for serving, EXCEPT the cleaned
+# transactions the batch scorer reads to build today's snapshot offline.
+data/interim/*
+!data/interim/cleaned_transactions.parquet
 
 # Unused React CRM prototype (not part of the Dockerized stack)
 frontend-crm/

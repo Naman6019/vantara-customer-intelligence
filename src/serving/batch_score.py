@@ -110,9 +110,13 @@ def score_customers(
         import torch
 
         ae = artifacts["autoencoder"]
+        # The autoencoder was trained on the full scaled feature vector, not the
+        # 5-dim segmentation matrix.
+        ae_input = scaler.transform(X) if card.get("churn_use_scaled", True) else X.to_numpy()
+        ae_tensor = torch.tensor(np.asarray(ae_input, dtype=np.float32))
         with torch.no_grad():
-            recon = ae["model"](torch.tensor(seg_X, dtype=torch.float32))
-            err = torch.mean((torch.tensor(seg_X, dtype=torch.float32) - recon) ** 2, dim=1).numpy()
+            recon = ae["model"](ae_tensor)
+            err = torch.mean((ae_tensor - recon) ** 2, dim=1).numpy()
         anomaly = (err > ae["threshold"]).astype(int)
 
     threshold = card.get("decision_threshold", 0.5)

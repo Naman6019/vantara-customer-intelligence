@@ -67,3 +67,7 @@ frontend-crm/.vite/
 # Ruff / mypy caches
 .ruff_cache/
 .mypy_cache/
+
+# Local SQLite fallback DB
+vantara.db
+
