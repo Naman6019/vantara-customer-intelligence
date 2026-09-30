@@ -25,7 +25,7 @@ jobs:
         run: ruff check .
 
       - name: Mypy (informational)
-        run: mypy src api --ignore-missing-imports --explicit-package-bases --mypy-path=. || true
+        run: mypy src api --ignore-missing-imports --explicit-package-bases || true
 
   tests:
     runs-on: ubuntu-latest

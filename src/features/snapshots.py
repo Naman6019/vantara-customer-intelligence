@@ -95,13 +95,14 @@ def save_snapshots(
     snaps: pd.DataFrame,
     engagement_ref: dict,
     path: Optional[str] = None,
+    root=None,
 ) -> str:
     """Persist the stacked snapshot table and the engagement reference artifact."""
     import json
 
-    from src.utils.config import get_project_root
+    from src.utils.config import get_project_root, load_config
 
-    root = get_project_root()
+    root = root or get_project_root()
     config = load_config()
     proc_dir = root / config.get("paths", {}).get("processed_dir", "data/processed")
     proc_dir.mkdir(parents=True, exist_ok=True)
