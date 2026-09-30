@@ -37,7 +37,7 @@ def transactions():
     add(1, "1004", "2011-08-20", 5, 3.0, "United Kingdom")
     add(1, "1005", "2011-10-05", 6, 10.0, "United Kingdom")
 
-    # Customer 2: churned, active earlier
+    # Customer 2: churned, active earlier (still inside the 365-day lookback)
     add(2, "2001", "2011-01-10", 20, 20.0, "Germany")
     add(2, "2002", "2011-03-15", 10, 15.0, "Germany")
 

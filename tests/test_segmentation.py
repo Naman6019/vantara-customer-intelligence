@@ -39,21 +39,35 @@ def test_evaluate_kmeans_k_range_returns_best_and_metrics():
 def test_assign_business_personas_all_branches():
     profiles = pd.DataFrame(
         [
-            {"cluster": 0, "recency": 10.0, "frequency": 2, "monetary_total": 100.0, "engagement_score": 80.0},
-            {"cluster": 1, "recency": 30.0, "frequency": 5, "monetary_total": 800.0, "engagement_score": 55.0},
-            {"cluster": 2, "recency": 220.0, "frequency": 4, "monetary_total": 1500.0, "engagement_score": 40.0},
-            {"cluster": 3, "recency": 30.0, "frequency": 1, "monetary_total": 200.0, "engagement_score": 30.0},
-            {"cluster": 4, "recency": 250.0, "frequency": 1, "monetary_total": 100.0, "engagement_score": 10.0},
-            {"cluster": 5, "recency": 120.0, "frequency": 5, "monetary_total": 900.0, "engagement_score": 50.0},
+            {"cluster": 0, "recency": 10.0, "frequency": 2, "monetary_total": 100.0, "return_rate": 0.0, "engagement_score": 80.0},
+            {"cluster": 1, "recency": 30.0, "frequency": 5, "monetary_total": 800.0, "return_rate": 0.0, "engagement_score": 55.0},
+            {"cluster": 2, "recency": 220.0, "frequency": 4, "monetary_total": 1500.0, "return_rate": 0.0, "engagement_score": 40.0},
+            {"cluster": 3, "recency": 30.0, "frequency": 1, "monetary_total": 200.0, "return_rate": 0.0, "engagement_score": 30.0},
+            {"cluster": 4, "recency": 250.0, "frequency": 1, "monetary_total": 100.0, "return_rate": 0.0, "engagement_score": 10.0},
+            {"cluster": 5, "recency": 120.0, "frequency": 5, "monetary_total": 900.0, "return_rate": 0.0, "engagement_score": 50.0},
+        ]
+    )
+    personas = assign_business_personas(profiles)
+    # Highest monetary cluster is VIP; every cluster gets a distinct label.
+    assert personas[2] == "High-Value Champions (VIP)"
+    assert personas[1] == "Loyal & Active Frequent Buyers"
+    assert personas[0] == "Recent Onboarding / New Prospects"
+    assert personas[3].startswith("Recent Onboarding / New Prospects")
+    assert personas[4] == "Dormant / Low-Engagement"
+    assert personas[5] == "Steady Mid-Value Buyers"
+    assert len(set(personas.values())) == len(personas)
+
+
+def test_assign_business_personas_high_return_branch():
+    profiles = pd.DataFrame(
+        [
+            {"cluster": 0, "recency": 100.0, "frequency": 5, "monetary_total": 5000.0, "return_rate": 0.05, "engagement_score": 70.0},
+            {"cluster": 1, "recency": 60.0, "frequency": 2, "monetary_total": 900.0, "return_rate": 0.35, "engagement_score": 45.0},
         ]
     )
     personas = assign_business_personas(profiles)
     assert personas[0] == "High-Value Champions (VIP)"
-    assert personas[1] == "Loyal & Active Frequent Buyers"
-    assert personas[2] == "At-Risk / Lapsed High-Value"
-    assert personas[3] == "Recent Onboarding / New Prospects"
-    assert personas[4] == "Dormant / Low-Engagement"
-    assert personas[5].startswith("Standard Active Segment")
+    assert personas[1] == "High-Return Service-Recovery"
 
 
 def test_run_customer_segmentation_with_save(monkeypatch, tmp_path):

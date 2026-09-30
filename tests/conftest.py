@@ -39,6 +39,18 @@ def make_feature_table(n: int = 240, seed: int = 7) -> pd.DataFrame:
     df["future_clv"] = np.where(
         df["is_churned"] == 1, 0.0, rng.uniform(0.0, 2000.0, n)
     )
+    # Auxiliary momentum baseline for the value model (not a model feature).
+    df["spend_last_90d"] = rng.uniform(0.0, 800.0, n)
+    # Stacked snapshots: two training cutoffs, one validation, one test cutoff.
+    n_train = int(n * 0.70)
+    n_val = int(n * 0.15)
+    cutoffs = (
+        [pd.Timestamp("2011-01-01")] * (n_train // 2)
+        + [pd.Timestamp("2011-02-01")] * (n_train - n_train // 2)
+        + [pd.Timestamp("2011-06-01")] * n_val
+        + [pd.Timestamp("2011-09-01")] * (n - n_train - n_val)
+    )
+    df["cutoff_date"] = pd.to_datetime(cutoffs)
     return df
 
 

@@ -119,7 +119,7 @@ def train_churn_ann(
         "Test F1": round(float(f1_score(y_test, test_preds)), 4),
         "Test Accuracy": round(float(accuracy_score(y_test, test_preds)), 4),
     }
-    logger.info(f"ANN Test Evaluation: ROC-AUC={metrics['Test_ROC_AUC'] if 'Test_ROC_AUC' in metrics else metrics['Test ROC-AUC']}, Recall={metrics['Test Recall']}")
+    logger.info(f"ANN Test Evaluation: ROC-AUC={metrics['Test ROC-AUC']}, Recall={metrics['Test Recall']}")
 
     if save_artifacts:
         root = get_project_root()

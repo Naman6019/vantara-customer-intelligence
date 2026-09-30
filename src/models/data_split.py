@@ -1,9 +1,29 @@
-from pathlib import Path
-from typing import Tuple, Dict, Any, List, Optional
+"""Leakage-safe, time-based dataset splitting for stacked customer snapshots.
+
+The old random 70/15/15 split let training and test customers come from the same
+period, which does not show how the model performs on later data (plan gap G1).
+Here we split by *cutoff date* instead:
+
+===========  =========================================================
+Split        Rule
+===========  =========================================================
+Train        every snapshot whose cutoff is strictly before the validation cutoff
+Validation   the snapshot at ``features.temporal.snapshots.validation``
+Test         the snapshot at ``features.temporal.snapshots.test`` (used once)
+Refit        every snapshot whose cutoff is <= ``snapshots.refit_end``
+===========  =========================================================
+
+A split is only valid if every training label window ends before the validation
+cutoff, and every validation label window ends before the test cutoff. With a
+monthly cadence and a 90-day window this holds by construction, and it is
+asserted in the test suite.
+"""
+
+from typing import Any, Dict, List, Optional
+
 import joblib
-import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from src.utils.config import get_project_root, load_config
@@ -11,6 +31,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger("data_split")
 
+# historical_clv is intentionally excluded: it duplicated monetary_total (plan D3).
 FEATURE_COLS = [
     "frequency",
     "total_items_bought",
@@ -20,7 +41,6 @@ FEATURE_COLS = [
     "customer_age_days",
     "monetary_avg",
     "avg_basket_size",
-    "historical_clv",
     "interpurchase_interval_mean",
     "interpurchase_interval_std",
     "purchase_frequency_trend",
@@ -32,101 +52,193 @@ FEATURE_COLS = [
     "engagement_score",
 ]
 
+CHURN_TARGET = "is_churned"
+CLV_TARGET = "future_clv"
+ID_COL = "customer_id"
+CUTOFF_COL = "cutoff_date"
 
-def load_processed_feature_table() -> pd.DataFrame:
-    """Loads the customer-level processed feature table."""
+
+def _split_cfg() -> dict:
+    return load_config().get("features", {}).get("temporal", {}).get("snapshots", {})
+
+
+def load_processed_feature_table(path: Optional[str] = None) -> pd.DataFrame:
+    """Load the single-cutoff processed feature table (dashboard/API default)."""
     root = get_project_root()
     config = load_config()
-    proc_path = root / config.get("paths", {}).get("processed_dir", "data/processed") / "customer_features.parquet"
+    if path is None:
+        proc_path = root / config.get("paths", {}).get("processed_dir", "data/processed") / "customer_features.parquet"
+    else:
+        proc_path = root / path
     if not proc_path.exists():
-        raise FileNotFoundError(f"Processed feature table not found at: {proc_path}. Run feature builder first.")
+        raise FileNotFoundError(
+            f"Processed feature table not found at: {proc_path}. Run the feature builder first."
+        )
     return pd.read_parquet(proc_path)
+
+
+def load_snapshots() -> pd.DataFrame:
+    """Load the stacked multi-cutoff snapshot table produced by ``snapshots.py``."""
+    root = get_project_root()
+    config = load_config()
+    snap_path = (
+        root / config.get("paths", {}).get("processed_dir", "data/processed") / "customer_snapshots.parquet"
+    )
+    if not snap_path.exists():
+        raise FileNotFoundError(
+            f"Snapshot table not found at: {snap_path}. Run src/features/snapshots.py first."
+        )
+    return pd.read_parquet(snap_path)
+
+
+def _require_cutoff(df: pd.DataFrame) -> pd.DataFrame:
+    if CUTOFF_COL not in df.columns:
+        raise ValueError(
+            "Time-based splitting requires a 'cutoff_date' column. Build stacked "
+            "snapshots with src.features.snapshots.build_snapshots() first."
+        )
+    df = df.copy()
+    df[CUTOFF_COL] = pd.to_datetime(df[CUTOFF_COL])
+    return df
+
+
+def assign_roles(
+    df: pd.DataFrame, cfg: Optional[dict] = None
+) -> Dict[str, List[pd.Timestamp]]:
+    """Map each unique cutoff to a train/val/test role (plan D1).
+
+    Training uses cutoffs in ``[train_start, train_end]`` only. The monthly
+    snapshots between ``train_end`` and ``refit_end`` exist solely for the
+    production refit and are excluded from the train/val/test partitions, which
+    guarantees every training label window closes before the validation cutoff.
+    """
+    if cfg is None:
+        cfg = _split_cfg()
+    train_end = pd.Timestamp(cfg.get("train_end", "2011-03-01"))
+    val_cutoff = pd.Timestamp(cfg.get("validation", "2011-06-01"))
+    test_cutoff = pd.Timestamp(cfg.get("test", "2011-09-01"))
+    cutoffs = sorted(pd.to_datetime(df[CUTOFF_COL]).unique())
+
+    roles: Dict[str, List[pd.Timestamp]] = {"train": [], "val": [], "test": []}
+    for c in cutoffs:
+        c = pd.Timestamp(c)
+        if c == test_cutoff:
+            roles["test"].append(c)
+        elif c == val_cutoff:
+            roles["val"].append(c)
+        elif c <= train_end:
+            roles["train"].append(c)
+        # monthly cutoffs in (train_end, refit_end] are refit-only
+    return roles
+
+
+def _scaled(scaler: StandardScaler, X: pd.DataFrame) -> pd.DataFrame:
+    return pd.DataFrame(scaler.transform(X), columns=FEATURE_COLS, index=X.index)
 
 
 def split_data(
     df: Optional[pd.DataFrame] = None,
-    save_scaler: bool = True
+    save_scaler: bool = True,
+    cfg: Optional[dict] = None,
 ) -> Dict[str, Any]:
-    """
-    Performs a 70/15/15 Stratified Train / Validation / Test split.
-    Fits StandardScaler on training features only (preventing test data leakage)
-    and saves the fitted scaler artifact.
-    
-    Returns:
-        Dict containing raw and scaled X and y matrices for train, val, and test partitions,
-        along with customer_id mappings.
+    """Build leakage-safe train/validation/test partitions from stacked snapshots.
+
+    Returns raw and scaled feature matrices, targets, customer ids and cutoff
+    dates for each partition. The scaler is fitted on the training partition only.
     """
     if df is None:
-        df = load_processed_feature_table()
+        df = load_snapshots()
+    df = _require_cutoff(df)
 
-    config = load_config()
-    seed = config.get("project", {}).get("random_seed", 42)
-    split_cfg = config.get("modeling", {}).get("train_val_test_split", {})
-    train_ratio = split_cfg.get("train_ratio", 0.70)
-    val_ratio = split_cfg.get("val_ratio", 0.15)
-    test_ratio = split_cfg.get("test_ratio", 0.15)
+    roles = assign_roles(df, cfg)
+    if not roles["train"]:
+        raise ValueError("No training snapshots found — check snapshot cutoff configuration.")
+    if not roles["val"]:
+        raise ValueError("No validation snapshot found — check snapshot cutoff configuration.")
 
-    X = df[FEATURE_COLS].copy()
-    y_churn = df["is_churned"].values
-    y_clv = df["future_clv"].values
-    customer_ids = df["customer_id"].values
+    def _slice(cutoffs: List[pd.Timestamp]) -> pd.DataFrame:
+        return df[df[CUTOFF_COL].isin(cutoffs)].copy()
 
-    # Step 1: Split train (70%) vs temp (30%)
-    temp_ratio = val_ratio + test_ratio
-    X_train, X_temp, y_train, y_temp, clv_train, clv_temp, id_train, id_temp = train_test_split(
-        X, y_churn, y_clv, customer_ids,
-        test_size=temp_ratio,
-        random_state=seed,
-        stratify=y_churn
-    )
+    train_df = _slice(roles["train"])
+    val_df = _slice(roles["val"])
+    test_df = _slice(roles["test"]) if roles["test"] else val_df.iloc[0:0].copy()
 
-    # Step 2: Split temp equally into validation (15%) and test (15%)
-    val_share_of_temp = val_ratio / temp_ratio
-    X_val, X_test, y_val, y_test, clv_val, clv_test, id_val, id_test = train_test_split(
-        X_temp, y_temp, clv_temp, id_temp,
-        test_size=(1.0 - val_share_of_temp),
-        random_state=seed,
-        stratify=y_temp
-    )
+    X_train = train_df[FEATURE_COLS].copy()
+    scaler = StandardScaler().fit(X_train)
 
-    # Step 3: Scale features - fit ONLY on X_train
-    scaler = StandardScaler()
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train), columns=FEATURE_COLS, index=X_train.index
-    )
-    X_val_scaled = pd.DataFrame(
-        scaler.transform(X_val), columns=FEATURE_COLS, index=X_val.index
-    )
-    X_test_scaled = pd.DataFrame(
-        scaler.transform(X_test), columns=FEATURE_COLS, index=X_test.index
-    )
+    out: Dict[str, Any] = {
+        "X_train": X_train,
+        "X_val": val_df[FEATURE_COLS].copy(),
+        "X_test": test_df[FEATURE_COLS].copy(),
+        "X_train_scaled": _scaled(scaler, X_train),
+        "X_val_scaled": _scaled(scaler, val_df[FEATURE_COLS]),
+        "X_test_scaled": _scaled(scaler, test_df[FEATURE_COLS]),
+        "y_train": train_df[CHURN_TARGET].to_numpy(),
+        "y_val": val_df[CHURN_TARGET].to_numpy(),
+        "y_test": test_df[CHURN_TARGET].to_numpy(),
+        "clv_train": train_df[CLV_TARGET].to_numpy(),
+        "clv_val": val_df[CLV_TARGET].to_numpy(),
+        "clv_test": test_df[CLV_TARGET].to_numpy(),
+        "id_train": train_df[ID_COL].to_numpy(),
+        "id_val": val_df[ID_COL].to_numpy(),
+        "id_test": test_df[ID_COL].to_numpy(),
+        "cutoff_train": train_df[CUTOFF_COL].to_numpy(),
+        "cutoff_val": val_df[CUTOFF_COL].to_numpy(),
+        "cutoff_test": test_df[CUTOFF_COL].to_numpy(),
+        "aux_train": train_df["spend_last_90d"].to_numpy() if "spend_last_90d" in train_df else None,
+        "aux_val": val_df["spend_last_90d"].to_numpy() if "spend_last_90d" in val_df else None,
+        "aux_test": test_df["spend_last_90d"].to_numpy() if "spend_last_90d" in test_df else None,
+        "feature_cols": FEATURE_COLS,
+        "scaler": scaler,
+        "roles": roles,
+    }
 
     if save_scaler:
         root = get_project_root()
+        config = load_config()
         art_dir = root / config.get("paths", {}).get("models_artifacts_dir", "models_artifacts")
         art_dir.mkdir(parents=True, exist_ok=True)
-        scaler_path = art_dir / "scaler.joblib"
-        joblib.dump(scaler, scaler_path)
-        logger.info(f"Fitted StandardScaler persisted to: {scaler_path}")
+        joblib.dump(scaler, art_dir / "scaler.joblib")
+        logger.info(f"Fitted StandardScaler persisted to: {art_dir / 'scaler.joblib'}")
 
     logger.info(
-        f"Data split completed: Train={len(X_train):,} ({len(X_train)/len(X):.1%}), "
-        f"Val={len(X_val):,} ({len(X_val)/len(X):.1%}), "
-        f"Test={len(X_test):,} ({len(X_test)/len(X):.1%})"
+        f"Time split: train cutoffs {[str(pd.Timestamp(c).date()) for c in roles['train']]} "
+        f"({len(train_df):,} rows), val {[str(pd.Timestamp(c).date()) for c in roles['val']]} "
+        f"({len(val_df):,} rows), test {[str(pd.Timestamp(c).date()) for c in roles['test']]} "
+        f"({len(test_df):,} rows)"
     )
-    logger.info(
-        f"Churn class balance: Train={y_train.mean():.2%}, Val={y_val.mean():.2%}, Test={y_test.mean():.2%}"
-    )
+    return out
 
+
+def refit_data(df: Optional[pd.DataFrame] = None, cfg: Optional[dict] = None) -> Dict[str, Any]:
+    """Return the production-refit partition (all snapshots up to ``refit_end``)."""
+    if df is None:
+        df = load_snapshots()
+    df = _require_cutoff(df)
+    if cfg is None:
+        cfg = _split_cfg()
+    refit_end = pd.Timestamp(cfg.get("refit_end", "2011-06-01"))
+    refit_df = df[df[CUTOFF_COL] <= refit_end].copy()
+    if refit_df.empty:
+        raise ValueError("No snapshots at or before refit_end — check configuration.")
+
+    X = refit_df[FEATURE_COLS].copy()
+    scaler = StandardScaler().fit(X)
     return {
-        "X_train": X_train, "X_val": X_val, "X_test": X_test,
-        "X_train_scaled": X_train_scaled, "X_val_scaled": X_val_scaled, "X_test_scaled": X_test_scaled,
-        "y_train": y_train, "y_val": y_val, "y_test": y_test,
-        "clv_train": clv_train, "clv_val": clv_val, "clv_test": clv_test,
-        "id_train": id_train, "id_val": id_val, "id_test": id_test,
+        "X": X,
+        "X_scaled": _scaled(scaler, X),
+        "y": refit_df[CHURN_TARGET].to_numpy(),
+        "clv": refit_df[CLV_TARGET].to_numpy(),
+        "aux": refit_df["spend_last_90d"].to_numpy() if "spend_last_90d" in refit_df else None,
+        "id": refit_df[ID_COL].to_numpy(),
+        "scaler": scaler,
         "feature_cols": FEATURE_COLS,
     }
 
 
 if __name__ == "__main__":
-    split_data()
+    data = split_data()
+    print(
+        f"train={len(data['X_train']):,} val={len(data['X_val']):,} test={len(data['X_test']):,} "
+        f"features={len(FEATURE_COLS)}"
+    )

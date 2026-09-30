@@ -57,31 +57,48 @@ def evaluate_kmeans_k_range(
 
 
 def assign_business_personas(profiles: pd.DataFrame) -> Dict[int, str]:
+    """Translate cluster profiles into distinct, business-readable personas.
+
+    The highest-value cluster is always the VIP segment; the rest are labelled by
+    recency, frequency, return behaviour and value relative to the segment median,
+    so no two clusters collapse to the same persona.
     """
-    Translates raw cluster metrics into actionable marketing personas based on
-    Recency, Frequency, Monetary value, and Engagement score.
-    """
-    personas = {}
-    for idx, row in profiles.iterrows():
+    df = profiles.copy()
+    vip_cluster = int(df.loc[df["monetary_total"].idxmax(), "cluster"])
+    median_monetary = float(df["monetary_total"].median())
+
+    personas: Dict[int, str] = {}
+    for _, row in df.iterrows():
         cluster_id = int(row["cluster"])
-        r = row["recency"]
-        f = row["frequency"]
-        m = row["monetary_total"]
-        eng = row["engagement_score"]
-
-        if eng >= 75 or (f >= 8 and m >= 2500):
+        if cluster_id == vip_cluster:
             personas[cluster_id] = "High-Value Champions (VIP)"
-        elif r <= 60 and f >= 3:
-            personas[cluster_id] = "Loyal & Active Frequent Buyers"
-        elif r > 180 and m >= 1000:
-            personas[cluster_id] = "At-Risk / Lapsed High-Value"
-        elif r <= 90 and f <= 2:
-            personas[cluster_id] = "Recent Onboarding / New Prospects"
-        elif r > 180 and f <= 2:
-            personas[cluster_id] = "Dormant / Low-Engagement"
-        else:
-            personas[cluster_id] = f"Standard Active Segment {cluster_id}"
+            continue
 
+        r = float(row["recency"])
+        f = float(row["frequency"])
+        m = float(row["monetary_total"])
+        ret = float(row.get("return_rate", 0.0) or 0.0)
+
+        if r <= 90 and f >= 4:
+            personas[cluster_id] = "Loyal & Active Frequent Buyers"
+        elif ret >= 0.20:
+            personas[cluster_id] = "High-Return Service-Recovery"
+        elif r > 180 and m < median_monetary:
+            personas[cluster_id] = "Dormant / Low-Engagement"
+        elif r > 180:
+            personas[cluster_id] = "At-Risk / Lapsed High-Value"
+        elif f <= 2:
+            personas[cluster_id] = "Recent Onboarding / New Prospects"
+        else:
+            personas[cluster_id] = "Steady Mid-Value Buyers"
+
+    # Guarantee uniqueness so every cluster is distinguishable in the dashboard.
+    seen: Dict[str, int] = {}
+    for cluster_id, label in personas.items():
+        if label in seen:
+            personas[cluster_id] = f"{label} ({cluster_id})"
+        else:
+            seen[label] = cluster_id
     return personas
 
 
