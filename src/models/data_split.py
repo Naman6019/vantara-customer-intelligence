@@ -192,6 +192,9 @@ def split_data(
         "scaler": scaler,
         "roles": roles,
     }
+    # Expose the raw single-cutoff test frame for batch scoring / drift (plan D6/D7).
+    out["X_train_raw"] = train_df[FEATURE_COLS + ["customer_id"]].copy()
+    out["X_test_raw"] = test_df[FEATURE_COLS + ["customer_id"]].copy()
 
     if save_scaler:
         root = get_project_root()

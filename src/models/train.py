@@ -148,12 +148,28 @@ def train_all(save: bool = True) -> Dict[str, Any]:
             json.dump(ref, f)
 
     roles = data["roles"]
+    # Value-tier quantiles for the recommendation engine. Many customers have a
+    # zero next-90-day value (they churn), so tiers are cut on positive values to
+    # keep "mid" meaningful.
+    val_all = np.concatenate([data["clv_train"], data["clv_val"]])
+    positives = val_all[val_all > 0]
+    tier_source = positives if positives.size else val_all
+    value_tier_quantiles = {
+        "low": float(np.quantile(tier_source, 0.33)),
+        "high": float(np.quantile(tier_source, 0.75)),
+    }
+    clv_flags = initialize_regressors()[clv_best_name]
     card = build_model_card(
         churn_model_name=best_name,
         churn_model_path="models_artifacts/churn_best_model.joblib",
         clv_model_name=clv_best_name,
         clv_model_path="models_artifacts/clv_best_model.joblib",
         feature_cols=FEATURE_COLS,
+        churn_use_scaled=use_scaled,
+        clv_use_scaled=clv_flags.get("use_scaled", False),
+        clv_needs_aux=clv_flags.get("needs_aux", True),
+        clv_log_target=clv_flags.get("log_target", False),
+        value_tier_quantiles=value_tier_quantiles,
         train_cutoffs=[str(pd.Timestamp(c).date()) for c in roles["train"]],
         val_cutoff=str(pd.Timestamp(roles["val"][0]).date()) if roles["val"] else "",
         test_cutoff=str(pd.Timestamp(roles["test"][0]).date()) if roles["test"] else "",

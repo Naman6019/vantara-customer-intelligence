@@ -1,10 +1,18 @@
 {
-  "model_version": "1.1.0+fb409b4",
-  "generated_at": "2026-09-30T13:54:15.439659+00:00",
+  "model_version": "1.1.0+066e004",
+  "generated_at": "2026-09-30T14:16:22.527184+00:00",
   "churn_model": "Logistic Regression",
   "churn_model_path": "models_artifacts/churn_best_model.joblib",
+  "churn_use_scaled": true,
   "clv_model": "LightGBM Tweedie",
   "clv_model_path": "models_artifacts/clv_best_model.joblib",
+  "clv_use_scaled": false,
+  "clv_needs_aux": true,
+  "clv_log_target": false,
+  "value_tier_quantiles": {
+    "low": 312.65,
+    "high": 935.0275
+  },
   "segmentation_model": "K-Means",
   "feature_cols": [
     "frequency",
@@ -79,6 +87,6 @@
     "mae": 437.94,
     "rmse": 2362.3,
     "value_capture_top_decile": 0.5798,
-    "train_time_sec": 0.728
+    "train_time_sec": 0.862
   }
 }

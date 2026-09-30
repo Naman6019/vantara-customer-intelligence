@@ -52,6 +52,11 @@ def build_model_card(
     reference_distribution_path: Optional[str] = None,
     segmentation_model: str = "K-Means",
     value_capture_decile: float = 0.10,
+    churn_use_scaled: bool = True,
+    clv_use_scaled: bool = False,
+    clv_needs_aux: bool = True,
+    clv_log_target: bool = False,
+    value_tier_quantiles: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     """Assemble the model card dictionary."""
     config = load_config()
@@ -61,8 +66,13 @@ def build_model_card(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "churn_model": churn_model_name,
         "churn_model_path": churn_model_path,
+        "churn_use_scaled": churn_use_scaled,
         "clv_model": clv_model_name,
         "clv_model_path": clv_model_path,
+        "clv_use_scaled": clv_use_scaled,
+        "clv_needs_aux": clv_needs_aux,
+        "clv_log_target": clv_log_target,
+        "value_tier_quantiles": value_tier_quantiles or {"low": 0.0, "high": 1e12},
         "segmentation_model": segmentation_model,
         "feature_cols": list(feature_cols),
         "train_cutoffs": train_cutoffs,
