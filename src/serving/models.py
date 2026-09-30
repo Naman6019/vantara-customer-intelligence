@@ -39,6 +39,7 @@ class Prediction(Base):
     anomaly_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     anomaly_flag: Mapped[int] = mapped_column(Integer, default=0)
     shap_top: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    features: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     scored_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -99,3 +100,12 @@ class DriftReport(Base):
     drifted: Mapped[int] = mapped_column(Integer, default=0)
     batch_date: Mapped[str] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class CustomerProduct(Base):
+    __tablename__ = "customer_products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    customer_id: Mapped[float] = mapped_column(Float, index=True)
+    product_id: Mapped[str] = mapped_column(String(32), index=True)
+    quantity: Mapped[float] = mapped_column(Float, default=0.0)

@@ -161,6 +161,15 @@ def score_customers(
         for v in results["predicted_value"]
     ]
     results["model_version"] = card["model_version"]
+    results["primary_country"] = np.where(
+        X["is_uk_customer"].to_numpy() >= 0.5, "United Kingdom", "International"
+    )
+    # Persist each customer's feature vector so the API can serve SHAP/LIME later.
+    results["_features"] = [
+        {c: (None if pd.isna(X.loc[i, c]) else float(X.loc[i, c])) for c in FEATURE_COLS}
+        for i in range(len(results))
+    ]
+    results.attrs["feature_cols"] = FEATURE_COLS
     return results
 
 
@@ -208,10 +217,15 @@ def persist_results(results: pd.DataFrame, session) -> int:
     )
 
     written = 0
+    feature_cols = results.attrs.get("feature_cols", FEATURE_COLS)
     for _, row in results.iterrows():
         cid = float(row["customer_id"])
         if session.get(Customer, cid) is None:
-            session.add(Customer(customer_id=cid))
+            session.add(Customer(customer_id=cid, primary_country=str(row.get("primary_country", "United Kingdom"))))
+
+        feature_vec = row.get("_features")
+        if feature_vec is None or (isinstance(feature_vec, float) and np.isnan(feature_vec)):
+            feature_vec = None
 
         pred = Prediction(
             customer_id=cid,
@@ -225,6 +239,7 @@ def persist_results(results: pd.DataFrame, session) -> int:
             value_tier=row.get("value_tier", "mid"),
             anomaly_flag=int(row["anomaly_flag"]),
             shap_top=list(row.get("shap_top", [])),
+            features=feature_vec,
         )
         session.add(pred)
         session.add(Segment(
@@ -277,6 +292,7 @@ def run_batch_scoring(score_date: Optional[str] = None) -> pd.DataFrame:
     db.ensure_engine()
     with db.get_session() as session:
         written = persist_results(results, session)
+        _persist_product_history(session, df_clean)
 
     # Drift report (plan D7): PSI per feature against the training reference.
     from src.monitoring.drift import compute_drift, persist_drift
@@ -291,6 +307,30 @@ def run_batch_scoring(score_date: Optional[str] = None) -> pd.DataFrame:
 
     logger.info(f"Persisted {written:,} scored customers.")
     return results
+
+
+def _persist_product_history(session, df_clean: pd.DataFrame) -> None:
+    """Store each customer's product purchases (popularity recommender baseline)."""
+    from src.serving.models import CustomerProduct
+
+    try:
+        session.query(CustomerProduct).delete()
+        prod = (
+            df_clean[["customer_id", "stock_code", "quantity"]]
+            .dropna(subset=["customer_id"])
+            .groupby(["customer_id", "stock_code"], as_index=False)["quantity"].sum()
+        )
+        session.add_all([
+            CustomerProduct(
+                customer_id=float(r.customer_id),
+                product_id=str(r.stock_code),
+                quantity=float(r.quantity),
+            )
+            for r in prod.itertuples()
+        ])
+        logger.info(f"Persisted {len(prod):,} customer-product rows.")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Product history persistence skipped: {exc}")
 
 
 if __name__ == "__main__":
