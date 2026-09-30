@@ -125,6 +125,7 @@ with st.sidebar:
             "🔍 Customer 360 & XAI",
             "📈 Revenue Trends & Forecast",
             "🩺 Model Health & Drift",
+            "🎯 Campaign Planner (Budget)",
             "📁 Batch Scoring & Export",
         ],
         index=0,
@@ -371,6 +372,54 @@ def view_health():
     st.caption("Prometheus metrics are exposed by the API at /metrics (request count, latency histogram, errors).")
 
 
+def view_campaign():
+    st.markdown("## Campaign Planner — Budget-Constrained Targeting")
+    if not require_service():
+        return
+    st.caption(
+        "Given a budget and an assumed save rate, the optimiser selects the customers "
+        "that maximise expected retained value minus contact cost. The save rate is an "
+        "assumption (no treatment data), so results are shown across a sensitivity grid."
+    )
+    c1, c2 = st.columns(2)
+    budget = c1.slider("Budget (£)", 1000, 50000, 5000, step=500)
+    save_rate = c2.slider("Assumed save rate", 0.02, 0.30, 0.10, step=0.01)
+
+    status, body = api_post("/campaign/plan", json={"budget": float(budget), "save_rate": float(save_rate), "limit": 500})
+    if status != 200:
+        st.error(body.get("detail", "Campaign planning failed"))
+        return
+
+    t = body["totals"]
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Customers Selected", f"{t['n_contacted']:,}")
+    k2.metric("Budget Spent", f"£{t['spent']:,.0f}")
+    k3.metric("Expected Value Retained", f"£{t['expected_value_retained']:,.0f}")
+    k4.metric("£ Retained per £ Spent", f"{t['value_per_pound']:.2f}")
+
+    pol = pd.DataFrame(body["policy_comparison"])
+    fig = px.bar(
+        pol, x="policy", y="value_per_pound", color="policy",
+        title="Policy comparison — value retained per £ spent",
+    )
+    st.plotly_chart(apply_theme(fig), use_container_width=True)
+    st.dataframe(pol, use_container_width=True, hide_index=True)
+
+    st.markdown("### Save-rate sensitivity")
+    grid = pd.DataFrame(body["sensitivity"])
+    fig = px.line(
+        grid, x="budget", y="expected_net_gain", color="save_rate", markers=True,
+        title="Expected net gain vs budget (per assumed save rate)",
+    )
+    st.plotly_chart(apply_theme(fig), use_container_width=True)
+
+    if body["selection"]:
+        sel = pd.DataFrame(body["selection"])
+        st.markdown("### Selected customers (top 100)")
+        st.dataframe(sel, use_container_width=True, hide_index=True)
+        st.download_button("Download campaign selection", sel.to_csv(index=False), "campaign_selection.csv", "text/csv")
+
+
 def view_batch():
     st.markdown("## Batch Scoring & Export")
     if not require_service():
@@ -402,6 +451,7 @@ VIEWS = {
     "🔍 Customer 360 & XAI": view_customer_360,
     "📈 Revenue Trends & Forecast": view_revenue,
     "🩺 Model Health & Drift": view_health,
+    "🎯 Campaign Planner (Budget)": view_campaign,
     "📁 Batch Scoring & Export": view_batch,
 }
 

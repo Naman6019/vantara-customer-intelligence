@@ -57,6 +57,7 @@ def test_dashboard_views_render(api_server):
         "🔍 Customer 360 & XAI",
         "📈 Revenue Trends & Forecast",
         "🩺 Model Health & Drift",
+        "🎯 Campaign Planner (Budget)",
         "📁 Batch Scoring & Export",
     ]:
         at.sidebar.radio[0].set_value(view).run()

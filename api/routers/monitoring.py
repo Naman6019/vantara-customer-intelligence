@@ -1,12 +1,62 @@
-"""Monitoring and revenue endpoints (plan D6/D7)."""
+"""Monitoring, revenue and campaign-planning endpoints (plan D6/D7, Beyond PRD P3)."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from src.serving import db
 
 router = APIRouter()
+
+
+class CampaignPlanRequest(BaseModel):
+    budget: float = Field(5000.0, gt=0, description="Total contact budget (£)")
+    save_rate: float = Field(0.10, gt=0, le=1.0, description="Assumed share of contacted churners retained")
+    limit: int = Field(500, ge=1, le=2000, description="Candidate pool size from the at-risk leaderboard")
+
+
+@router.post("/campaign/plan")
+def campaign_plan(request: Request, body: Optional[CampaignPlanRequest] = None) -> Dict[str, Any]:
+    """Budget-constrained retention targeting (Beyond PRD P3).
+
+    Reads the value-at-risk leaderboard, then greedily selects the customers that
+    maximise expected retained value minus contact cost within the budget. Also
+    returns a policy comparison and a save-rate sensitivity grid.
+    """
+    from sqlalchemy import text
+
+    from src.recommendations.campaign import plan_campaign, policy_comparison, sensitivity_grid
+
+    body = body or CampaignPlanRequest()
+    if db.get_engine() is None:
+        db.ensure_engine()
+    engine = db.get_engine()
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT p.customer_id, p.calibrated_probability, p.predicted_value, p.value_at_risk,
+                       p.value_tier, r.channel, r.priority_score
+                FROM predictions p LEFT JOIN recommendations r ON r.customer_id = p.customer_id
+                ORDER BY p.value_at_risk DESC LIMIT :limit
+                """
+            ),
+            {"limit": body.limit},
+        ).fetchall()
+    candidates = [dict(r._mapping) for r in rows]
+
+    plan = plan_campaign(candidates, budget=body.budget, save_rate=body.save_rate)
+    return {
+        "totals": plan["totals"],
+        "n_selected": len(plan["selection"]),
+        "selection": plan["selection"][:100],
+        "policy_comparison": policy_comparison(candidates, budget=body.budget),
+        "sensitivity": sensitivity_grid(candidates),
+    }
 
 
 @router.get("/monitoring/drift")
