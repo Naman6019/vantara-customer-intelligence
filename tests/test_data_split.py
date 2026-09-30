@@ -4,9 +4,9 @@ import pytest
 
 from src.models import data_split
 from src.models.data_split import (
+    CUTOFF_COL,
     FEATURE_COLS,
     ID_COL,
-    CUTOFF_COL,
     assign_roles,
     load_processed_feature_table,
     refit_data,

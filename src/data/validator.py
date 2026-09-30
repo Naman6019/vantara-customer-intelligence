@@ -1,5 +1,7 @@
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
+
 import pandas as pd
+
 from src.utils.logger import get_logger
 
 logger = get_logger("data_validator")
@@ -23,10 +25,10 @@ def validate_raw_data(df: pd.DataFrame) -> Tuple[bool, Dict[str, Any]]:
     - Date range consistency
     - Critical column null-rate limits
     - Minimum sample size
-    
+
     Args:
         df: Raw combined DataFrame.
-        
+
     Returns:
         Tuple of (passed: bool, validation_report: dict).
         Raises ValueError if any critical check fails.

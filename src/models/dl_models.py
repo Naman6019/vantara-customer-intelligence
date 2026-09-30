@@ -1,17 +1,17 @@
-from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, Tuple
+
 import joblib
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.metrics import roc_auc_score, recall_score, precision_score, f1_score, accuracy_score
 
+from src.models.data_split import split_data
 from src.utils.config import get_project_root, load_config
 from src.utils.logger import get_logger
-from src.models.data_split import split_data
 
 logger = get_logger("deep_learning")
 
@@ -236,10 +236,10 @@ def prepare_lstm_sequences(max_seq_len: int = 8) -> Tuple[torch.Tensor, torch.Te
     df_cleaned = pd.read_parquet(root / "data/interim/cleaned_transactions.parquet")
     config = load_config()
     cutoff = pd.Timestamp(config.get("features", {}).get("temporal", {}).get("cutoff_date", "2011-09-01"))
-    
+
     # Observation records
     obs_df = df_cleaned[(df_cleaned["invoice_date"] < cutoff) & (df_cleaned["quantity"] > 0) & (~df_cleaned["is_cancellation"])].copy()
-    
+
     # Customer order summaries
     orders = (
         obs_df.groupby(["customer_id", "invoice"])
@@ -256,7 +256,7 @@ def prepare_lstm_sequences(max_seq_len: int = 8) -> Tuple[torch.Tensor, torch.Te
 
     sequences = []
     labels = []
-    
+
     for cust_id, group in orders.groupby("customer_id"):
         # Features: [gap_days / 100, log1p(spend), log1p(qty)]
         feats = np.column_stack([
@@ -264,14 +264,14 @@ def prepare_lstm_sequences(max_seq_len: int = 8) -> Tuple[torch.Tensor, torch.Te
             np.log1p(np.maximum(0, group["spend"].values)),
             np.log1p(np.maximum(0, group["qty"].values))
         ])
-        
+
         # Pad or slice to max_seq_len
         if len(feats) >= max_seq_len:
             seq = feats[-max_seq_len:]
         else:
             pad = np.zeros((max_seq_len - len(feats), 3))
             seq = np.vstack([pad, feats])
-            
+
         is_churned = 0 if cust_id in active_pred_customers else 1
         sequences.append(seq)
         labels.append(is_churned)

@@ -1,7 +1,8 @@
-import pytest
 import pandas as pd
+import pytest
+
+from src.data.validator import REQUIRED_COLUMNS, validate_raw_data
 from src.utils.config import get_project_root, load_config
-from src.data.validator import validate_raw_data, REQUIRED_COLUMNS
 
 
 def test_project_root_exists():

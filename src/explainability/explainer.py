@@ -1,16 +1,16 @@
 from pathlib import Path
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import shap
 from lime.lime_tabular import LimeTabularExplainer
 from sklearn.inspection import PartialDependenceDisplay
 
-from src.utils.config import get_project_root, load_config
+from src.models.data_split import FEATURE_COLS, split_data
+from src.utils.config import get_project_root
 from src.utils.logger import get_logger
-from src.models.data_split import split_data, FEATURE_COLS
 
 logger = get_logger("explainer")
 
@@ -91,7 +91,7 @@ class ModelExplainer:
 
         # Rank features by absolute impact
         impacts = []
-        for col, val, shap_val in zip(self.feature_names, row.iloc[0], values):
+        for col, val, shap_val in zip(self.feature_names, row.iloc[0], values, strict=False):
             impacts.append({
                 "feature": col,
                 "value": float(val),
@@ -116,11 +116,13 @@ class ModelExplainer:
         )
         return exp.as_list()
 
-    def generate_partial_dependence_plots(self, features: List[str] = ["recency", "frequency"], save_path: Optional[Path] = None) -> Path:
+    def generate_partial_dependence_plots(self, features: List[str] | None = None, save_path: Optional[Path] = None) -> Path:
         """
         Generates Partial Dependence Plots (PDP) illustrating non-linear effects
         of primary drivers (e.g. Recency and Frequency) on churn risk.
         """
+        if features is None:
+            features = ["recency", "frequency"]
         root = get_project_root()
         if save_path is None:
             save_path = root / "docs" / "pdp_plots.png"

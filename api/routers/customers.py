@@ -150,7 +150,6 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
     dashboard never loads model artifacts directly (PRD acceptance criterion 4).
     """
     import numpy as np
-
     from sqlalchemy import text
 
     if db.get_engine() is None:
@@ -172,7 +171,6 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
 
     import pandas as pd
 
-    from api.state import get_artifacts
 
     art = get_artifacts(request)
     feature_cols = art["card"]["feature_cols"]

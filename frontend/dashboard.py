@@ -5,7 +5,6 @@ model artifacts or parquet files directly, so it can never drift out of sync wit
 the served model and it works entirely inside Docker Compose.
 """
 
-import io
 import os
 import sys
 from pathlib import Path

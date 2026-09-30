@@ -11,16 +11,14 @@ metric can never leak into model selection (there is a unit test for this).
 """
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-import joblib
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -29,10 +27,11 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-import xgboost as xgb
-import lightgbm as lgb
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 
-from src.utils.config import get_project_root, load_config
+from src.utils.config import load_config
 from src.utils.logger import get_logger
 
 logger = get_logger("churn_models")

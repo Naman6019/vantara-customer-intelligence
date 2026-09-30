@@ -22,7 +22,6 @@ asserted in the test suite.
 from typing import Any, Dict, List, Optional
 
 import joblib
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 

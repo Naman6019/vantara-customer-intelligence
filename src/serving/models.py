@@ -6,7 +6,7 @@ scorer and the API share one schema definition.
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, JSON, String, func
+from sqlalchemy import JSON, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

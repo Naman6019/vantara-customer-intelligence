@@ -1,7 +1,6 @@
-from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
+
 import pandas as pd
-import numpy as np
 
 from src.utils.config import get_project_root, load_config
 from src.utils.logger import get_logger
@@ -11,15 +10,15 @@ logger = get_logger("data_cleaner")
 
 def clean_missing_customers(df: pd.DataFrame, drop: bool = True) -> pd.DataFrame:
     """
-    Identifies rows with missing Customer IDs. 
+    Identifies rows with missing Customer IDs.
     Drops or flags them based on configuration.
     """
     initial_count = len(df)
     missing_mask = df["customer_id"].isna()
     missing_count = missing_mask.sum()
-    
+
     logger.info(f"Transactions missing Customer ID: {missing_count:,} ({missing_count / initial_count:.2%})")
-    
+
     if drop:
         df_cleaned = df[~missing_mask].copy()
         logger.info(f"Dropped missing customer rows. Remaining: {len(df_cleaned):,}")
@@ -56,7 +55,7 @@ def filter_admin_codes(df: pd.DataFrame, excluded_codes: Optional[List[str]] = N
     # Match exact or case-insensitive starts
     excluded_set = {c.strip().upper() for c in excluded_codes}
     mask = df["stock_code"].str.strip().str.upper().isin(excluded_set)
-    
+
     df_filtered = df[~mask].copy()
     filtered_count = initial_count - len(df_filtered)
     logger.info(f"Administrative stock code filtering: removed {filtered_count:,} rows. Remaining: {len(df_filtered):,}")
@@ -88,13 +87,13 @@ def clean_outliers_and_prices(
     Cleans extreme data-entry errors and non-positive prices for non-cancellation rows.
     """
     initial_count = len(df)
-    
+
     # Filter price: for regular sales, price must be positive
     valid_price = (df["price"] >= price_min) & (df["price"] <= price_max)
-    
+
     # Filter quantity bounds
     valid_qty = (df["quantity"] >= qty_min) & (df["quantity"] <= qty_max)
-    
+
     df_cleaned = df[valid_price & valid_qty].copy()
     removed = initial_count - len(df_cleaned)
     logger.info(f"Outlier & invalid price filtering: removed {removed:,} rows. Remaining: {len(df_cleaned):,}")
@@ -113,16 +112,16 @@ def standardize_descriptions(df: pd.DataFrame) -> pd.DataFrame:
 def run_cleaning_pipeline(df: pd.DataFrame, save_interim: bool = True) -> pd.DataFrame:
     """
     Executes the end-to-end data cleaning pipeline and saves the interim dataset.
-    
+
     Args:
         df: Raw DataFrame from loader.
         save_interim: If True, writes cleaned data to data/interim/cleaned_transactions.parquet.
-        
+
     Returns:
         Cleaned transaction-level DataFrame ready for feature engineering.
     """
     logger.info(f"Starting data cleaning pipeline on {len(df):,} raw records...")
-    
+
     config = load_config()
     cleaning_cfg = config.get("data_cleaning", {})
     drop_cust = cleaning_cfg.get("drop_missing_customer_id", True)

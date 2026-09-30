@@ -1,16 +1,16 @@
 import logging
 import sys
-from pathlib import Path
+
 from src.utils.config import get_project_root, load_config
 
 
 def get_logger(name: str = "customer_behavior_platform") -> logging.Logger:
     """
     Creates and configures a standardized logger based on project configuration.
-    
+
     Args:
         name: Name of the logger module.
-        
+
     Returns:
         Configured logging.Logger instance.
     """

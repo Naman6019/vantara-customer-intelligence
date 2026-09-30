@@ -1,8 +1,8 @@
-from pathlib import Path
-from typing import Optional
 import zipfile
-import requests
+from pathlib import Path
+
 import pandas as pd
+import requests
 
 from src.utils.config import get_project_root, load_config
 from src.utils.logger import get_logger
@@ -14,10 +14,10 @@ def download_raw_dataset(force: bool = False) -> Path:
     """
     Downloads the Online Retail II dataset archive from the UCI ML Repository
     and extracts online_retail_II.xlsx into data/raw/.
-    
+
     Args:
         force: If True, re-downloads even if the file already exists.
-        
+
     Returns:
         Path to the extracted Excel file.
     """
@@ -67,11 +67,11 @@ def load_raw_data(force_reload: bool = False, use_cache: bool = True) -> pd.Data
     Loads both sheets of the Online Retail II dataset, standardizes columns,
     and returns a combined chronologically-ordered DataFrame. Caches to Parquet
     for near-instant subsequent loads.
-    
+
     Args:
         force_reload: Re-read from Excel even if cached Parquet exists.
         use_cache: Cache combined output to Parquet.
-        
+
     Returns:
         pd.DataFrame containing ~1.06M transaction records.
     """

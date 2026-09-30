@@ -1,10 +1,11 @@
 import pandas as pd
+
 from src.data.cleaner import (
     clean_missing_customers,
+    clean_outliers_and_prices,
     deduplicate_transactions,
     filter_admin_codes,
     flag_returns_and_cancellations,
-    clean_outliers_and_prices,
 )
 
 

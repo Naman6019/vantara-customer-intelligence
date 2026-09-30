@@ -7,7 +7,6 @@ tests can swap in fakes and the app does not fail at import time.
 import time
 from typing import Any, Dict, Optional
 
-from src.models.model_card import read_model_card
 from src.utils.logger import get_logger
 
 logger = get_logger("api_state")

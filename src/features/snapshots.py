@@ -6,12 +6,12 @@ gives the model roughly an order of magnitude more training rows while keeping
 every label window strictly earlier than the next split's cutoff (plan D1).
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from src.features.builder import build_single_snapshot
 from src.features import engagement
+from src.features.builder import build_single_snapshot
 from src.utils.config import load_config
 from src.utils.logger import get_logger
 
@@ -118,8 +118,8 @@ def save_snapshots(
 
 
 if __name__ == "__main__":
-    from src.data.loader import load_raw_data
     from src.data.cleaner import run_cleaning_pipeline
+    from src.data.loader import load_raw_data
     from src.utils.config import get_project_root
 
     root = get_project_root()

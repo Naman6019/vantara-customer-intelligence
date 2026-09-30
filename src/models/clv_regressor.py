@@ -11,21 +11,18 @@ Plan D3:
 """
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 
-import joblib
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler as SkScaler
-import lightgbm as lgb
 
-from src.utils.config import get_project_root, load_config
 from src.utils.logger import get_logger
-from src.models.data_split import FEATURE_COLS
 
 logger = get_logger("clv_regressor")
 

@@ -40,7 +40,6 @@ def _predict_frame(request: Request, X: pd.DataFrame, raw: pd.DataFrame) -> pd.D
     """Shared scoring core for single and batch predictions."""
     art = _artifacts(request)
     card = art["card"]
-    feature_cols = card["feature_cols"]
 
     churn_prob = art["churn_model"].predict_proba(_churn_matrix(request, X))[:, 1]
     calibrated = art["calibrator"].predict(churn_prob) if art.get("calibrator") else churn_prob
@@ -196,7 +195,7 @@ def predict_single_customer(request: Request, features: CustomerFeaturesInput) -
             top_risk_drivers=top_drivers,
         )
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     latency_ms = (time.perf_counter() - t0) * 1000.0
     log_prediction(cust_id, latency_ms, "/predict")
@@ -228,5 +227,5 @@ async def batch_score_csv(request: Request, file: UploadFile = File(...)) -> Lis
             "risk_tier": rec["risk_tier"],
             "predicted_future_clv": rec["predicted_future_clv"],
         }
-        for cid, rec in zip(cust_ids, records)
+        for cid, rec in zip(cust_ids, records, strict=False)
     ]

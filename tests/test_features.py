@@ -1,11 +1,11 @@
-import pytest
 import pandas as pd
+import pytest
 
 from src.features.builder import (
-    extract_temporal_windows,
-    compute_targets,
-    compute_rfm_and_spend_features,
     compute_engagement_score,
+    compute_rfm_and_spend_features,
+    compute_targets,
+    extract_temporal_windows,
 )
 
 
@@ -17,10 +17,10 @@ def mock_transactions():
         {"invoice": "1001", "stock_code": "A", "description": "ITEM A", "quantity": 2, "price": 10.0, "customer_id": 1.0, "invoice_date": pd.Timestamp("2011-06-01"), "line_total": 20.0, "is_cancellation": False, "country": "United Kingdom"},
         {"invoice": "1002", "stock_code": "B", "description": "ITEM B", "quantity": 1, "price": 15.0, "customer_id": 1.0, "invoice_date": pd.Timestamp("2011-08-15"), "line_total": 15.0, "is_cancellation": False, "country": "United Kingdom"},
         {"invoice": "1003", "stock_code": "C", "description": "ITEM C", "quantity": 3, "price": 10.0, "customer_id": 1.0, "invoice_date": pd.Timestamp("2011-10-01"), "line_total": 30.0, "is_cancellation": False, "country": "United Kingdom"},
-        
+
         # Customer 2: active before cutoff, inactive after cutoff (churned, is_churned=1)
         {"invoice": "2001", "stock_code": "A", "description": "ITEM A", "quantity": 5, "price": 20.0, "customer_id": 2.0, "invoice_date": pd.Timestamp("2011-01-10"), "line_total": 100.0, "is_cancellation": False, "country": "Germany"},
-        
+
         # Customer 3: joins strictly after cutoff (new customer, should NOT be evaluated at cutoff)
         {"invoice": "3001", "stock_code": "D", "description": "ITEM D", "quantity": 1, "price": 50.0, "customer_id": 3.0, "invoice_date": pd.Timestamp("2011-11-01"), "line_total": 50.0, "is_cancellation": False, "country": "France"},
     ]

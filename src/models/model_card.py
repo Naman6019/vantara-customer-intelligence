@@ -114,5 +114,5 @@ def read_model_card(path: Optional[Path] = None) -> Dict[str, Any]:
         raise FileNotFoundError(
             f"Model card not found at {path}. Run the training pipeline (src/models/pipeline.py)."
         )
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)

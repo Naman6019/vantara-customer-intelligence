@@ -217,7 +217,6 @@ def persist_results(results: pd.DataFrame, session) -> int:
     )
 
     written = 0
-    feature_cols = results.attrs.get("feature_cols", FEATURE_COLS)
     for _, row in results.iterrows():
         cid = float(row["customer_id"])
         if session.get(Customer, cid) is None:
@@ -274,8 +273,8 @@ def persist_results(results: pd.DataFrame, session) -> int:
 
 def run_batch_scoring(score_date: Optional[str] = None) -> pd.DataFrame:
     """End-to-end batch job: build today's snapshot, score it, persist to the DB."""
-    from src.data.loader import load_raw_data
     from src.data.cleaner import run_cleaning_pipeline
+    from src.data.loader import load_raw_data
     from src.features.builder import build_customer_feature_table
     from src.serving import db
 

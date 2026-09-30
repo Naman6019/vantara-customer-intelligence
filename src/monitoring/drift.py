@@ -48,7 +48,7 @@ def load_reference(path=None) -> Dict[str, Dict[str, List[float]]]:
         config = load_config()
         art_dir = root / config.get("paths", {}).get("models_artifacts_dir", "models_artifacts")
         path = art_dir / "reference_distribution.json"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

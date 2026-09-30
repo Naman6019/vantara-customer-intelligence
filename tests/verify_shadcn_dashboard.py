@@ -1,6 +1,8 @@
 import time
 from pathlib import Path
+
 from playwright.sync_api import sync_playwright
+
 
 def verify_and_capture_shadcn():
     docs_dir = Path("docs")

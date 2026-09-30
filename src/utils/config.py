@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict
+
 import yaml
 
 
@@ -11,10 +12,10 @@ def get_project_root() -> Path:
 def load_config(config_path: str | Path | None = None) -> Dict[str, Any]:
     """
     Loads and parses the YAML configuration file.
-    
+
     Args:
         config_path: Optional custom path to config.yaml. Defaults to config/config.yaml.
-        
+
     Returns:
         Dict containing project configuration settings.
     """
@@ -29,7 +30,7 @@ def load_config(config_path: str | Path | None = None) -> Dict[str, Any]:
     if not config_file.exists():
         raise FileNotFoundError(f"Configuration file not found at: {config_file}")
 
-    with open(config_file, "r", encoding="utf-8") as f:
+    with open(config_file, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     return config

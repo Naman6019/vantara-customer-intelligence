@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.data.validator import validate_raw_data, REQUIRED_COLUMNS
+from src.data.validator import REQUIRED_COLUMNS, validate_raw_data
 
 
 def _valid_frame(n_rows: int = 600_000, n_customers: int = 5_000, cust_null_pct: float = 0.10):

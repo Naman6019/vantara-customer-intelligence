@@ -12,12 +12,12 @@ Run with ``python -m src.models.train``. Produces:
 """
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import brier_score_loss, roc_auc_score
+from sklearn.metrics import brier_score_loss
 
 from src.models.calibration import ProbabilityCalibrator, choose_threshold
 from src.models.churn_models import (
@@ -27,9 +27,9 @@ from src.models.churn_models import (
     tune_and_compare_churn_models,
 )
 from src.models.clv_regressor import (
+    _train_matrix,
     evaluate_regressor,
     tune_and_compare_clv_regressors,
-    _train_matrix,
 )
 from src.models.data_split import FEATURE_COLS, refit_data, split_data
 from src.models.model_card import build_model_card, write_model_card
@@ -73,7 +73,6 @@ def train_all(save: bool = True) -> Dict[str, Any]:
     root = get_project_root()
     art_dir = root / config.get("paths", {}).get("models_artifacts_dir", "models_artifacts")
     art_dir.mkdir(parents=True, exist_ok=True)
-    seed = config.get("project", {}).get("random_seed", 42)
     recall_target = config.get("modeling", {}).get("calibration", {}).get("recall_target", 0.70)
     decile = config.get("modeling", {}).get("value_capture_decile", 0.10)
 

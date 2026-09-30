@@ -21,8 +21,8 @@ section[data-testid="stSidebar"] {
     background-color: #0F172A !important;
     border-right: 1px solid #1E293B;
 }
-section[data-testid="stSidebar"] h1, 
-section[data-testid="stSidebar"] h2, 
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] p,
@@ -238,4 +238,3 @@ section[data-testid="stSidebar"] .stRadio label:hover {
     margin-top: 14px;
 }
 """
-

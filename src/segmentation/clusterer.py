@@ -1,11 +1,11 @@
-from pathlib import Path
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple
+
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.mixture import GaussianMixture
-from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.preprocessing import StandardScaler
 
 from src.utils.config import get_project_root, load_config
@@ -150,11 +150,6 @@ def run_customer_segmentation(
     df_segmented = df.copy()
     df_segmented["kmeans_cluster"] = kmeans_labels
     df_segmented["gmm_cluster"] = gmm_labels
-
-    cluster_summary = (
-        df_segmented.groupby("kmeans_cluster")[SEGMENTATION_FEATURES + ["is_churned", "future_clv"]]
-        .agg(["mean", "median", "count"])
-    )
 
     profiles = (
         df_segmented.groupby("kmeans_cluster")[SEGMENTATION_FEATURES]

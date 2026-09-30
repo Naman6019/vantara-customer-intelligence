@@ -1,4 +1,5 @@
 import sys
+
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -8,7 +9,7 @@ with sync_playwright() as p:
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     print("Loading page...")
     page.goto('http://localhost:8501', timeout=30000)
-    
+
     # Wait specifically for the radio navigation or the main title
     print("Waiting for radio navigation...")
     page.wait_for_selector('[data-testid="stRadio"]', timeout=30000)

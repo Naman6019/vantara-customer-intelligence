@@ -1,11 +1,11 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 
-from src.models.data_split import split_data, FEATURE_COLS
-from src.models.churn_models import initialize_models, evaluate_model
-from src.models.clv_regressor import initialize_regressors, evaluate_regressor
-from src.segmentation.clusterer import evaluate_kmeans_k_range, assign_business_personas
+from src.models.churn_models import evaluate_model, initialize_models
+from src.models.clv_regressor import evaluate_regressor, initialize_regressors
+from src.models.data_split import FEATURE_COLS, split_data
+from src.segmentation.clusterer import assign_business_personas, evaluate_kmeans_k_range
 
 
 @pytest.fixture

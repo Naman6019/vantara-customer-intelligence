@@ -1,7 +1,9 @@
 import json
 import time
 from pathlib import Path
+
 from playwright.sync_api import sync_playwright
+
 
 def verify_ui_and_dom():
     docs_dir = Path("docs")
@@ -11,7 +13,7 @@ def verify_ui_and_dom():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 950})
-        
+
         print("Loading dashboard at http://localhost:8501...")
         page.goto("http://localhost:8501", timeout=30000)
         page.wait_for_selector('label[data-baseweb="radio"]', timeout=30000)
