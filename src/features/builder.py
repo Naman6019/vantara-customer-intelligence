@@ -74,6 +74,17 @@ def active_cohort(
     return set(recent["customer_id"].dropna().unique())
 
 
+def realized_value(
+    df_clean: pd.DataFrame, cutoff_date: pd.Timestamp, window_days: int = 90
+) -> pd.DataFrame:
+    """Net realized spend in ``[T, T + window_days)`` per customer (benchmarking helper)."""
+    cutoff = pd.Timestamp(cutoff_date)
+    end = cutoff + pd.Timedelta(days=int(window_days))
+    win = df_clean[(df_clean["invoice_date"] >= cutoff) & (df_clean["invoice_date"] < end)]
+    spend = win.groupby("customer_id")["line_total"].sum().clip(lower=0.0).rename("future_clv")
+    return spend.reset_index()
+
+
 def compute_targets(
     df_obs: pd.DataFrame,
     df_pred: pd.DataFrame,

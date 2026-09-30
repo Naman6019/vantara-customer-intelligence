@@ -229,10 +229,41 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
     narrative = f"Calibrated churn risk {prob:.1%} ({row._mapping['risk_tier']}). "
     if pos:
         narrative += f"Top warning sign: {pos[0]['feature'].replace('_', ' ')}."
+
+    # Beyond PRD P1: probabilistic P(alive) from BG/NBD for the same customer.
+    p_alive = None
+    try:
+        import json as _json
+
+        import pandas as _pd
+
+        from src.models.probabilistic_clv import (
+            build_rfm_summary,
+            deserialize_models,
+            predict,
+        )
+        from src.utils.config import get_project_root, load_config
+
+        path = get_project_root() / "models_artifacts" / "probabilistic_clv.json"
+        cleaned = get_project_root() / "data/interim/cleaned_transactions.parquet"
+        if path.exists() and cleaned.exists():
+            df_clean = _pd.read_parquet(cleaned)
+            cutoff = _pd.Timestamp(
+                load_config().get("features", {}).get("temporal", {}).get("cutoff_date", "2011-09-01")
+            )
+            summary = build_rfm_summary(df_clean, cutoff)
+            row_summary = summary[summary["customer_id"] == customer_id]
+            if not row_summary.empty:
+                models = deserialize_models(_json.loads(path.read_text(encoding="utf-8")))
+                p_alive = float(predict(models, row_summary)["p_alive"].iloc[0])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"P(alive) skipped: {exc}")
+
     return {
         "customer_id": customer_id,
         "risk_tier": row._mapping["risk_tier"],
         "calibrated_probability": prob,
+        "p_alive": round(p_alive, 4) if p_alive is not None else None,
         "shap": shap_drivers,
         "lime": lime_drivers,
         "narrative": narrative.strip(),

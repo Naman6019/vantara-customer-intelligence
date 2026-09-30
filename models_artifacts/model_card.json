@@ -1,6 +1,6 @@
 {
-  "model_version": "1.1.0+066e004",
-  "generated_at": "2026-09-30T14:16:22.527184+00:00",
+  "model_version": "1.1.0+6e44eef",
+  "generated_at": "2026-09-30T14:48:42.123628+00:00",
   "churn_model": "Logistic Regression",
   "churn_model_path": "models_artifacts/churn_best_model.joblib",
   "churn_use_scaled": true,
@@ -87,6 +87,6 @@
     "mae": 437.94,
     "rmse": 2362.3,
     "value_capture_top_decile": 0.5798,
-    "train_time_sec": 0.862
+    "train_time_sec": 0.428
   }
 }

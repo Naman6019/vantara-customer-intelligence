@@ -45,6 +45,61 @@ def _positive_proba(model: Any, X: pd.DataFrame) -> np.ndarray:
     return model.decision_function(X)
 
 
+def df_clean_for_benchmark() -> pd.DataFrame:
+    """Load the cleaned transactions for the probabilistic-CLV benchmark."""
+    path = get_project_root() / "data/interim/cleaned_transactions.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(path)
+
+
+def _fit_probabilistic_clv(df_clean: pd.DataFrame, art_dir, save: bool) -> Dict[str, Any]:
+    """Fit BG/NBD + Gamma-Gamma, benchmark on validation, persist for serving."""
+    if df_clean is None or df_clean.empty:
+        return {}
+    from src.features.builder import realized_value
+    from src.models.clv_regressor import top_decile_value_capture
+    from src.models.probabilistic_clv import (
+        build_rfm_summary,
+        fit_models,
+        predict,
+        serialize_models,
+    )
+
+    val_cutoff = pd.Timestamp(load_config().get("features", {}).get("temporal", {}).get("cutoff_date", "2011-09-01"))
+    refit_cutoff = pd.Timestamp(
+        load_config().get("features", {}).get("temporal", {}).get("snapshots", {}).get("refit_end", "2011-06-01")
+    )
+
+    # Benchmark against realized value on the validation cutoff.
+    summary = build_rfm_summary(df_clean, val_cutoff)
+    models = fit_models(summary)
+    preds = predict(models, summary, horizon_days=90)
+    actual = realized_value(df_clean, val_cutoff, 90)
+    merged = preds.merge(actual, on="customer_id", how="inner")
+    mae = float(np.mean(np.abs(merged["probabilistic_value"] - merged["future_clv"])))
+    capture = top_decile_value_capture(merged["future_clv"].to_numpy(), merged["probabilistic_value"].to_numpy())
+
+    # Refit on the production window for serving.
+    serve_models = fit_models(build_rfm_summary(df_clean, refit_cutoff))
+    if save:
+        with open(art_dir / "probabilistic_clv.json", "w", encoding="utf-8") as f:
+            json.dump(serialize_models(serve_models), f, indent=2)
+        with open(art_dir / "probabilistic_clv_benchmark.json", "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "validation_cutoff": str(val_cutoff.date()),
+                    "customers": int(len(merged)),
+                    "mae": round(mae, 2),
+                    "top_decile_value_capture": round(capture, 4),
+                },
+                f,
+                indent=2,
+            )
+    logger.info(f"BG/NBD+GG benchmark: MAE £{mae:.2f}, top-decile capture {capture:.3f}")
+    return {"mae": round(mae, 2), "top_decile_value_capture": round(capture, 4), "customers": int(len(merged))}
+
+
 def _feature_reference(df: pd.DataFrame) -> Dict[str, Dict[str, list]]:
     """Save per-feature decile breakpoints from the training snapshot for drift (D7)."""
     ref: Dict[str, Dict[str, list]] = {}
@@ -145,6 +200,10 @@ def train_all(save: bool = True) -> Dict[str, Any]:
         calibrator.save(art_dir / "churn_calibrator.joblib")
         with open(art_dir / "reference_distribution.json", "w", encoding="utf-8") as f:
             json.dump(ref, f)
+
+    # Beyond PRD P1: fit BG/NBD + Gamma-Gamma on the refit window and benchmark.
+    clv_benchmark = _fit_probabilistic_clv(df_clean_for_benchmark(), art_dir, save)
+    logger.info(f"Probabilistic CLV benchmark: {clv_benchmark}")
 
     roles = data["roles"]
     # Value-tier quantiles for the recommendation engine. Many customers have a
