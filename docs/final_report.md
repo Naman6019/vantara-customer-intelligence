@@ -5,8 +5,8 @@
 > Rebuilt against the approach statement and PRD acceptance criteria, using
 > **out-of-time** evaluation. Headline numbers are lower than the original draft
 > because the original random split leaked future information; §10 explains the
-> difference. All tables are regenerated from MLflow / the model card by
-> `scripts/make_report_tables.py`.
+> difference. All tables are regenerated from MLflow, the model card and the
+> evaluation artifacts by `scripts/make_report_tables.py`.
 
 ---
 
@@ -17,8 +17,8 @@ small resellers. The Retention and Marketing teams previously relied on reactive
 rule-based segments ("no order in 90 days") that treat every customer in a segment
 identically. This platform replaces that with a customer-level decision system:
 
-1. **Calibrated churn risk** — out-of-time test **ROC-AUC 0.756**, recall **75.8%**
-   at the operating threshold (recall ≥ 0.70).
+1. **Calibrated churn risk** — out-of-time test **ROC-AUC 0.756**, recall **71.3%**
+   at the deployed calibrated threshold 0.6709 (recall ≥ 0.70).
 2. **90-day customer value** — **LightGBM Tweedie**, validation **MAE £284**;
    it captures **63.9%** of the future value in the top decile (baseline: 12.5%).
 3. **Value-at-risk prioritisation** — the at-risk leaderboard is ranked by
@@ -73,23 +73,41 @@ Hyperparameters were tuned with **Optuna (TPE)** scored by forward-chaining CV o
 training cutoffs only. The model is chosen on validation ROC-AUC; the test snapshot is
 scored once.
 
-| Model | Val ROC-AUC | Val Recall | Val Precision | Val F1 | CV ROC-AUC (fwd-chain) |
-|:---|---:|---:|---:|---:|---:|
-| **Logistic Regression (production)** | **0.7967** | 0.755 | 0.810 | 0.782 | 0.7815 |
-| Random Forest | 0.7897 | 0.814 | 0.794 | 0.804 | 0.8347 |
-| Decision Tree | 0.7873 | 0.804 | 0.800 | 0.802 | 0.7740 |
-| XGBoost | 0.7617 | 0.808 | 0.770 | 0.788 | 0.8869 |
-| LightGBM | 0.7602 | 0.781 | 0.781 | 0.781 | 0.8613 |
-| KNN | 0.7562 | 0.816 | 0.770 | 0.792 | 0.7976 |
+| Model | Val ROC-AUC | Val Recall | Val Precision | Val F1 | CV ROC-AUC (fwd-chain) | CV ROC-AUC (5-fold) |
+|:---|---:|---:|---:|---:|---:|---:|
+| **Logistic Regression (production)** | **0.7967** | 0.755 | 0.810 | 0.782 | 0.7815 | 0.7523 |
+| Random Forest | 0.7897 | 0.814 | 0.794 | 0.804 | 0.8347 | 0.8288 |
+| Decision Tree | 0.7873 | 0.804 | 0.800 | 0.802 | 0.7740 | 0.7469 |
+| XGBoost | 0.7617 | 0.808 | 0.770 | 0.788 | 0.8869 | 0.9097 |
+| LightGBM | 0.7602 | 0.781 | 0.781 | 0.781 | 0.8613 | 0.8824 |
+| KNN | 0.7562 | 0.816 | 0.770 | 0.792 | 0.7976 | 0.7829 |
+
+The 5-fold column is the PRD Section 11 diagnostic on the training partition. It is
+optimistic because the same customer appears at several stacked cutoffs, so a shuffled
+fold can test on a customer it trained on. Selection therefore uses validation ROC-AUC
+with forward-chaining CV, which never trains on a later cutoff.
 
 **Calibration and threshold (plan D4):** isotonic regression is fit on validation; the
 operating threshold is the *highest-precision* threshold that keeps recall ≥ 0.70 →
 **threshold 0.6709** (validation recall 0.708, precision 0.828). Risk tiers come from
 quantiles of the calibrated probability, not hand-picked constants.
 
-**Out-of-time test result (used once):** ROC-AUC **0.7559**, recall **0.7579**, precision
-0.6722, F1 0.7125, accuracy 0.6914, calibrated Brier 0.2143. AUC is below the PRD's 0.80
+**Out-of-time test result (used once):** ROC-AUC **0.7559**, calibrated Brier 0.2143.
+At the deployed calibrated threshold 0.6709 the operating point is recall **0.7134**,
+precision **0.6885**, accuracy **0.6926**, F1 **0.7007**. AUC is below the PRD's 0.80
 target; §10 explains why and why the number is nonetheless trustworthy.
+
+| | Predicted retained | Predicted churn |
+|:---|---:|---:|
+| **Actual retained** | 1,438 (TN) | 704 (FP) |
+| **Actual churned** | 625 (FN) | 1,556 (TP) |
+
+![Churn confusion matrix at the deployed threshold](confusion_matrix.png)
+
+For reference, the default 0.5 cut-off on raw probabilities gives recall 0.7579,
+precision 0.6722 and accuracy 0.6914 (the `test_metrics` block in `model_card.json`);
+the deployed system uses the calibrated threshold above, so 71.3% is the recall the
+retention team actually gets.
 
 ### 3.2 90-day value regression (selection on validation MAE + value capture)
 
@@ -126,9 +144,16 @@ independent **P(alive)** view, shown in Customer 360.
 
 | Architecture | Objective / Input | Test metric | Finding |
 |:---|:---|:---|:---|
-| Feed-Forward ANN | Tabular features, BatchNorm, Dropout(0.25), early stopping | ROC-AUC **0.7492**, recall **0.9124** | Highest recall; useful as an ensemble consensus check. |
-| Sequence LSTM | Ordered `[gap_days, spend, qty]` per customer | ROC-AUC **0.7765**, recall **0.9052** | Learns temporal cadence beyond static features; matches the best classical model. |
-| Spending Autoencoder | Unsupervised reconstruction, 17→12→4→12→17 | threshold **0.7487** (95th pct) | Flags ~5% of accounts for manual review. |
+| Feed-Forward ANN | Tabular features, BatchNorm, Dropout(0.25), early stopping | ROC-AUC **0.7550**, recall **0.9060** | Highest recall; useful as an ensemble consensus check. |
+| Sequence LSTM | Ordered `[gap_days, spend, qty]` per customer | ROC-AUC **0.7730**, recall **0.8697** | Learns temporal cadence beyond static features; close to the best classical model on the test snapshot. |
+| Spending Autoencoder | Unsupervised reconstruction, 17→12→4→12→17 | threshold **0.9195** (95th pct) | Flags ~5% of accounts for manual review. |
+
+**Convergence (PRD §16.4):** the ANN early-stopped after epoch 11 with its best
+validation loss at epoch 4. The LSTM's validation loss is lowest at epoch 3 and then
+stays flat while training loss keeps falling — the onset of overfitting, which is why
+it is a comparison model and not the production model.
+
+![Deep-learning training and validation loss](loss_curves.png)
 
 ---
 
@@ -174,6 +199,18 @@ rule-table / optimised). *Save-rate values are assumptions and are labelled as s
 - **Local:** per-customer SHAP **and LIME** are served by the API
   (`GET /customers/{id}/explain`) on the served model's stored feature vector, and shown
   side by side in the dashboard (PRD acceptance criterion 4).
+- **Force plots (PRD §10):** the three representative test customers — lowest risk,
+  highest risk, and the borderline case nearest the deployed threshold — are saved as
+  `docs/shap_force_low_risk.png`, `docs/shap_force_high_risk.png` and
+  `docs/shap_force_borderline.png`; `docs/shap_force_summary.json` records their top
+  drivers. The plots explain the served logistic-regression model on raw feature values.
+
+| Case | Customer | Calibrated P(churn) | Call at 0.6709 | Strongest driver (raw-probability impact) |
+|:---|---:|---:|:---|:---|
+| Low risk | 12,748 | 0.0% | Retained | frequency = 242 (−0.168) |
+| High risk | 13,672 | 100.0% | Churn | interpurchase_interval_std = 259.6 (+0.140) |
+| Borderline | 12,372 | 67.1% | Churn | engagement_score = 47.2 (+0.047) |
+
 - **Plain language:** a narrative template translates the drivers into a sentence a marketing
   analyst can read, e.g. *"Calibrated churn risk 43.9% (Moderate). Top warning sign: recency."*
 
@@ -192,7 +229,7 @@ rule-table / optimised). *Save-rate values are assumptions and are labelled as s
   drift report** vs the training reference; and delayed-label performance from the backtest.
   The December batch flags `frequency` (PSI 0.47), `interpurchase_interval_std` (0.45) and
   `purchase_frequency_trend` (0.38) — expected, since the Christmas trading window shifts cadence.
-- **Quality gates:** ruff clean, mypy configured, **pytest with 75% coverage** on `src/`+`api/`
+- **Quality gates:** ruff clean, mypy configured, **pytest with 80% coverage** on `src/`+`api/`
   (PRD requires ≥ 70%), GitHub Actions CI on every push.
 
 ---
@@ -236,7 +273,7 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 |:---|:---|:---|
 | Evaluation | Random stratified split (same period) | Out-of-time by cutoff; test used once |
 | Churn test ROC-AUC | 0.7846 (XGBoost) | **0.7559** (Logistic Regression, selected on validation) |
-| Churn recall | 81.3% | **75.8%** at the recall-constrained threshold |
+| Churn recall | 81.3% | **71.3%** at the deployed calibrated threshold (75.8% at the 0.5 cut-off) |
 | CLV test R² | 0.8447 (Ridge) | **0.4887** (LightGBM Tweedie); validation 0.7543 |
 | Window | ~100 days | **90 days** (config-driven) |
 | Cohort | 5,225 (all ever seen) | **4,323** active within 365 days |
@@ -274,8 +311,12 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 | 90-day windows enforced & tested | Yes (`tests/test_features.py`) |
 | At-risk ranked by calibrated P(churn) × value | Yes API + dashboard |
 | SHAP **and** LIME per customer in the dashboard | Yes `/customers/{id}/explain` |
+| SHAP force plots for low/high/borderline customers | Yes `docs/shap_force_*.png` |
+| 5-fold stratified CV for all six classical models | Yes `models_artifacts/five_fold_cv.csv` |
+| Confusion matrix at the deployed threshold | Yes `docs/confusion_matrix.png` |
+| ANN/LSTM training-vs-validation loss curves | Yes `docs/loss_curves.png` |
 | `/metrics`, drift report, Model Health page | Yes |
-| Test coverage on `src/` (+`api/`) ≥ 70% | Yes 75% |
+| Test coverage on `src/` (+`api/`) ≥ 70% | Yes 80% |
 | Final report PDF with regenerated tables | Yes `docs/final_report.pdf` |
 
 — *Vantara Retail Solutions Data Science Division* —

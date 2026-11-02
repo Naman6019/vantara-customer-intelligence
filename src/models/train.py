@@ -17,7 +17,14 @@ from typing import Any, Dict
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import brier_score_loss
+from sklearn.metrics import (
+    accuracy_score,
+    brier_score_loss,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 
 from src.models.calibration import ProbabilityCalibrator, choose_threshold
 from src.models.churn_models import (
@@ -159,6 +166,17 @@ def train_all(save: bool = True) -> Dict[str, Any]:
     cal_test = calibrator.predict(test_metrics.pop("probabilities"))
     test_metrics["threshold"] = threshold_info["threshold"]
     test_metrics["calibrated_brier"] = round(float(brier_score_loss(data["y_test"], cal_test)), 4)
+    operating_pred = (cal_test >= threshold_info["threshold"]).astype(int)
+    test_metrics["operating_point"] = {
+        "threshold": threshold_info["threshold"],
+        "accuracy": round(float(accuracy_score(data["y_test"], operating_pred)), 4),
+        "precision": round(
+            float(precision_score(data["y_test"], operating_pred, zero_division=0)), 4
+        ),
+        "recall": round(float(recall_score(data["y_test"], operating_pred, zero_division=0)), 4),
+        "f1_score": round(float(f1_score(data["y_test"], operating_pred, zero_division=0)), 4),
+        "confusion_matrix": confusion_matrix(data["y_test"], operating_pred).tolist(),
+    }
     logger.info(f"TEST (used once) {best_name}: {test_metrics}")
 
     # Production refit on all snapshots up to refit_end.
@@ -169,6 +187,8 @@ def train_all(save: bool = True) -> Dict[str, Any]:
 
     # ---------------------------------------------------------------- CLV
     clv_lb, clv_fitted = tune_and_compare_clv_regressors(data, decile=decile)
+    clv_lb.to_csv(art_dir / "clv_model_comparison.csv", index=False)
+    clv_lb.to_parquet(art_dir / "clv_model_comparison.parquet", index=False)
     logger.info("\n" + clv_lb.to_string(index=False))
     clv_best_name = clv_lb.loc[clv_lb["Val MAE (£)"].idxmin(), "Model"]
     logger.info(f"Selected value model on validation: {clv_best_name}")

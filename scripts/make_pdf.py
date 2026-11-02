@@ -22,10 +22,28 @@ def _protect_math(text: str) -> str:
     return text
 
 
+def _resolve_images(text: str) -> str:
+    """Point Markdown image links at real files so xhtml2pdf can embed them."""
+
+    def replace(match: re.Match) -> str:
+        alt, raw_path = match.group(1), match.group(2)
+        if re.match(r"^[a-z]+://", raw_path, flags=re.I):
+            return match.group(0)
+        candidate = ROOT / raw_path
+        if not candidate.exists():
+            candidate = ROOT / "docs" / raw_path
+        if not candidate.exists():
+            return match.group(0)
+        return f"![{alt}]({candidate.as_posix()})"
+
+    return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", replace, text)
+
+
 def main() -> int:
     src = ROOT / "docs" / "final_report.md"
     out = ROOT / "docs" / "final_report.pdf"
     text = _protect_math(src.read_text(encoding="utf-8"))
+    text = _resolve_images(text)
 
     html_body = markdown.markdown(text, extensions=["tables", "fenced_code", "toc"])
     html = f"""<html><head><meta charset="utf-8"><style>
@@ -37,6 +55,7 @@ def main() -> int:
     th {{ background: #f1f5f9; }}
     pre {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px; font-size: 9px; }}
     code {{ background: #f1f5f9; }}
+    img {{ max-width: 100%; }}
     </style></head><body>{html_body}</body></html>"""
 
     with open(out, "wb") as fh:

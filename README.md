@@ -22,11 +22,11 @@ monitoring.
 
 | Task | Metric | Value |
 |---|---|---|
-| Churn (calibrated) | Test ROC-AUC / recall @ threshold 0.671 | **0.756 / 75.8%** |
+| Churn (calibrated) | Test ROC-AUC / recall @ threshold 0.671 | **0.756 / 71.3%** |
 | 90-day value | Validation MAE / top-decile value capture | **£284 / 63.9%** |
 | Probabilistic CLV | BG/NBD + Gamma-Gamma MAE / capture (validation) | £525 / 40.3% |
 | Segmentation | K-Means k=4 silhouette / Davies-Bouldin | 0.462 / 0.759 |
-| Coverage | pytest on `src/` + `api/` | **75%** (target ≥ 70%) |
+| Coverage | pytest on `src/` + `api/` | **80%** (target ≥ 70%) |
 
 ---
 
@@ -88,6 +88,13 @@ Vantara/
 ├── dvc.yaml, pyproject.toml, .pre-commit-config.yaml, .github/workflows/ci.yml
 └── docs/              final_report.md/.pdf, architecture & ER diagrams, tables.md
 ```
+
+> `frontend-crm/` is an **exploratory React/shadcn prototype** kept for reference only.
+> It is not part of the deployed stack (excluded in `.dockerignore`) and does not read
+> from the API; the graded dashboard is the API-only Streamlit app in `frontend/`.
+
+The three notebooks in `notebooks/` are committed **with executed outputs** and call the
+versioned `src/` code rather than duplicating it.
 
 ---
 

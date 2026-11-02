@@ -30,6 +30,8 @@ models_artifacts/*
 !models_artifacts/probabilistic_clv_benchmark.json
 !models_artifacts/churn_model_comparison.csv
 !models_artifacts/clv_model_comparison.csv
+!models_artifacts/five_fold_cv.csv
+!models_artifacts/test_confusion.json
 
 # MLflow experiment tracking (local file store)
 mlruns/
@@ -55,6 +57,7 @@ venv/
 ENV/
 *.env
 .env.*
+!/.env.example
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints
