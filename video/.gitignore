@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Raw screen footage and voice recordings: large and regenerable
+public/footage/
+public/voice/

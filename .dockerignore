@@ -67,3 +67,6 @@ extracted_requirements.md
 Thumbs.db
 .vscode/
 .idea/
+
+# Remotion walkthrough video project (not part of the served stack)
+video/
