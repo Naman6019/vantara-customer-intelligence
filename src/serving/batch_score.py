@@ -180,31 +180,11 @@ def score_customers(
 def _shap_top_drivers(
     artifacts: Dict[str, Any], X_raw: pd.DataFrame, top_k: int = 3
 ) -> Dict[int, List[Dict[str, Any]]]:
-    """Top-k SHAP drivers per customer. Falls back to zeros if SHAP is unavailable."""
-    try:
-        import shap
+    """Top-k SHAP drivers per customer. Empty if SHAP is unavailable."""
+    from src.explainability.local import shap_drivers
 
-        model = artifacts["churn_model"]
-        try:
-            explainer = shap.TreeExplainer(model)
-        except Exception:  # noqa: BLE001 - not a tree model
-            explainer = shap.LinearExplainer(model, X_raw)
-        values = np.asarray(explainer.shap_values(X_raw))
-        if values.ndim == 3:
-            values = values[:, :, -1]
-        out: Dict[int, List[Dict[str, Any]]] = {}
-        for i in range(len(X_raw)):
-            row = values[i]
-            order = np.argsort(np.abs(row))[::-1][:top_k]
-            out[i] = [
-                {
-                    "feature": FEATURE_COLS[j],
-                    "shap_impact": round(float(row[j]), 4),
-                    "direction": "Increases Churn" if row[j] > 0 else "Decreases Churn",
-                }
-                for j in order
-            ]
-        return out
+    try:
+        return {i: drivers[:top_k] for i, drivers in enumerate(shap_drivers(artifacts, X_raw))}
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"SHAP computation skipped: {exc}")
         return {}

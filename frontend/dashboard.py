@@ -142,17 +142,16 @@ def view_overview():
     if not require_service():
         return
     meta = api_get("/metadata")
-    at_risk = api_get("/customers/at-risk", {"limit": 500})
     segs = api_get("/segments")
     perf = api_get("/monitoring/performance")
 
     total = sum(s.get("n_customers", 0) for s in segs) if isinstance(segs, list) else 0
     var_total = sum(s.get("total_value_at_risk", 0) or 0 for s in segs) if isinstance(segs, list) else 0
-    high_risk = [r for r in at_risk if r.get("risk_tier") == "High"] if isinstance(at_risk, list) else []
+    high_risk = sum(s.get("n_high_risk", 0) or 0 for s in segs) if isinstance(segs, list) else 0
 
     c1, c2, c3, c4 = st.columns(4)
     c1.markdown(kpi("Customers Scored", f"{total:,}", "live batch score"), unsafe_allow_html=True)
-    c2.markdown(kpi("High Churn Risk", f"{len(high_risk):,}", "calibrated tiers"), unsafe_allow_html=True)
+    c2.markdown(kpi("High Churn Risk", f"{high_risk:,}", "calibrated high tier"), unsafe_allow_html=True)
     c3.markdown(kpi("Value at Risk", f"£{var_total:,.0f}", "P(churn) x 90-day value"), unsafe_allow_html=True)
     c4.markdown(
         kpi("Test ROC-AUC", f"{meta.get('test_roc_auc', 0):.3f}", f"threshold {meta.get('decision_threshold', 0):.2f}"),
@@ -225,7 +224,7 @@ def view_at_risk():
     df = df[["customer_id", "calibrated_probability", "predicted_value", "value_at_risk", "risk_tier", "persona", "action"]]
     df.columns = ["Customer", "P(churn)", "90-day Value (£)", "Value at Risk (£)", "Risk", "Persona", "Recommended Action"]
     st.dataframe(
-        df.style.format({"P(churn)": "{:.1%}", "90-day Value (£)": "£{:,.0f}", "Value at Risk (£)": "£{:,.0f}"}),
+        df.style.format({"Customer": "{:.0f}", "P(churn)": "{:.1%}", "90-day Value (£)": "£{:,.0f}", "Value at Risk (£)": "£{:,.0f}"}),
         use_container_width=True, hide_index=True, height=520,
     )
     st.download_button("Download CSV", df.to_csv(index=False), "at_risk_priority.csv", "text/csv")

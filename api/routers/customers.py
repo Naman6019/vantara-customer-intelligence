@@ -12,6 +12,28 @@ router = APIRouter()
 logger = get_logger("api_customers")
 
 
+_LIME_BACKGROUND: Optional[Any] = None
+
+
+def _lime_background(engine, feature_cols: List[str], n: int = 500):
+    """Stored feature vectors of up to ``n`` scored customers, loaded once per process."""
+    global _LIME_BACKGROUND
+    if _LIME_BACKGROUND is None:
+        import pandas as pd
+        from sqlalchemy import text
+
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("SELECT features FROM predictions WHERE features IS NOT NULL ORDER BY customer_id LIMIT :n"),
+                {"n": n},
+            ).fetchall()
+        vectors = [_as_dict(r._mapping["features"]) for r in rows]
+        _LIME_BACKGROUND = pd.DataFrame(
+            [{c: float(v.get(c, 0.0) or 0.0) for c in feature_cols} for v in vectors]
+        )
+    return _LIME_BACKGROUND
+
+
 def _rows_to_dicts(rows) -> List[Dict[str, Any]]:
     return [dict(r._mapping) for r in rows]
 
@@ -144,7 +166,6 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
     Both explainers use the served model and the stored feature vector, so the
     dashboard never loads model artifacts directly (PRD acceptance criterion 4).
     """
-    import numpy as np
     from sqlalchemy import text
 
     if db.get_engine() is None:
@@ -166,56 +187,20 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
 
     import pandas as pd
 
+    from src.explainability.local import lime_drivers as lime_for
+    from src.explainability.local import shap_drivers as shap_for
 
     art = get_artifacts(request)
     feature_cols = art["card"]["feature_cols"]
     vector = {c: float(_as_dict(row._mapping["features"]).get(c, 0.0) or 0.0) for c in feature_cols}
     X = pd.DataFrame([vector])[feature_cols]
 
-    import shap
+    shap_drivers = shap_for(art, X)[0][:8]
 
-    model = art["churn_model"]
-    try:
-        explainer = shap.TreeExplainer(model)
-    except Exception:  # noqa: BLE001
-        explainer = shap.LinearExplainer(model, X)
-    values = np.asarray(explainer.shap_values(X))
-    if values.ndim == 3:
-        values = values[:, :, -1]
-    row_vals = values[0]
-    shap_drivers = sorted(
-        [
-            {
-                "feature": c,
-                "value": round(float(X.iloc[0][c]), 4),
-                "shap_impact": round(float(row_vals[j]), 4),
-                "direction": "Increases Churn" if row_vals[j] > 0 else "Decreases Churn",
-            }
-            for j, c in enumerate(feature_cols)
-        ],
-        key=lambda d: abs(d["shap_impact"]),
-        reverse=True,
-    )[:8]
-
-    # LIME on the same customer.
+    # LIME on the same customer, sampling around the scored customer base.
     lime_drivers: List[Dict[str, Any]] = []
     try:
-        from lime.lime_tabular import LimeTabularExplainer
-
-        background = art.get("background", X)
-        lime_explainer = LimeTabularExplainer(
-            training_data=background.to_numpy(),
-            feature_names=feature_cols,
-            class_names=["Retained", "Churned"],
-            mode="classification",
-            random_state=42,
-        )
-        exp = lime_explainer.explain_instance(
-            X.iloc[0].to_numpy(), model.predict_proba, num_features=8
-        )
-        lime_drivers = [
-            {"rule": rule, "weight": round(float(weight), 4)} for rule, weight in exp.as_list()
-        ]
+        lime_drivers = lime_for(art, X, _lime_background(engine, feature_cols))
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"LIME explanation skipped: {exc}")
 
@@ -279,6 +264,7 @@ def segments_overview(request: Request) -> List[Dict[str, Any]]:
     sql = """
         SELECT s.persona,
                COUNT(*) AS n_customers,
+               SUM(CASE WHEN p.risk_tier = 'High' THEN 1 ELSE 0 END) AS n_high_risk,
                AVG(p.calibrated_probability) AS avg_churn_prob,
                AVG(p.predicted_value) AS avg_predicted_value,
                SUM(p.value_at_risk) AS total_value_at_risk

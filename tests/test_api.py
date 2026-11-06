@@ -168,3 +168,30 @@ def test_campaign_plan_considers_every_scored_customer_by_default(client):
     body = client.post("/campaign/plan", json={}).json()
     assert body["n_candidates"] == n_scored
     assert body["totals"]["budget"] == load_config()["campaign"]["default_budget"]
+
+
+def test_predict_risk_drivers_are_non_zero(client):
+    drivers = client.post("/predict", json=_payload()).json()["top_risk_drivers"]
+    assert any(abs(d["shap_impact"]) > 0 for d in drivers)
+
+
+def test_customer_explanation_has_non_zero_shap_and_lime(client):
+    if _scored_customers() == 0:
+        pytest.skip("needs a database filled by the batch scorer (python -m src.pipeline all)")
+    cid = client.get("/customers/at-risk?limit=1").json()[0]["customer_id"]
+    body = client.get(f"/customers/{cid}/explain").json()
+    assert any(abs(d["shap_impact"]) > 0 for d in body["shap"])
+    assert any(abs(r["weight"]) > 0 for r in body["lime"])
+
+
+def test_segments_count_every_high_risk_customer(client):
+    if _scored_customers() == 0:
+        pytest.skip("needs a database filled by the batch scorer (python -m src.pipeline all)")
+    from sqlalchemy import text
+
+    from src.serving import db
+
+    with db.ensure_engine().connect() as conn:
+        n_high = conn.execute(text("SELECT COUNT(*) FROM predictions WHERE risk_tier = 'High'")).scalar_one()
+    segments = client.get("/segments").json()
+    assert sum(s["n_high_risk"] for s in segments) == n_high

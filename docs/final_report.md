@@ -201,12 +201,12 @@ grid runs from £250 to £2,000; above that the budget no longer constrains the 
 
 | Policy at £500, assumed 10% save rate | Customers contacted | Expected value retained | Retained per £ |
 |:---|---:|---:|---:|
-| **Optimised value-at-risk** | 280 | **£5,990** | **£11.98** |
-| Current rule table (by priority) | 186 | £5,543 | £11.09 |
+| **Optimised value-at-risk** | 278 | **£5,969** | **£11.94** |
+| Current rule table (by priority) | 162 | £5,274 | £10.55 |
 | Top spenders | 168 | £3,098 | £6.20 |
-| Top churn probability | 500 | £1,636 | £3.27 |
+| Top churn probability | 404 | £1,303 | £2.61 |
 
-Targeting by value at risk returns almost four times as much per pound as targeting the
+Targeting by value at risk returns more than four times as much per pound as targeting the
 customers most likely to leave. Absolute figures scale with the assumed save rate and
 channel costs, so the ranking between policies is the robust result, not the pound values.
 
@@ -239,7 +239,11 @@ conversion problem can only be measured in a live A/B test, which has not been r
 - **Global:** SHAP summary in `docs/shap_global_summary.png`; recency and engagement dominate.
 - **Local:** per-customer SHAP **and LIME** are served by the API
   (`GET /customers/{id}/explain`) on the served model's stored feature vector, and shown
-  side by side in the dashboard (PRD acceptance criterion 4).
+  side by side in the dashboard (PRD acceptance criterion 4). Both work in the model's
+  scaled input space: SHAP is measured against the average training customer and LIME
+  samples around real scored customers, while values are shown in raw units. The batch
+  scorer and `/predict` use the same code (`src/explainability/local.py`), and the top SHAP
+  drivers feed the recommendation rules.
 - **Force plots (PRD §10):** the three representative test customers — lowest risk,
   highest risk, and the borderline case nearest the deployed threshold — are saved as
   `docs/shap_force_low_risk.png`, `docs/shap_force_high_risk.png` and

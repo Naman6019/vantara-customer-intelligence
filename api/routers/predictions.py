@@ -20,6 +20,9 @@ from api.schemas.customer import (
 )
 from api.state import log_prediction
 from src.recommendations.engine import recommend
+from src.utils.logger import get_logger
+
+logger = get_logger("api_predictions")
 
 router = APIRouter()
 
@@ -71,33 +74,13 @@ def _predict_frame(request: Request, X: pd.DataFrame, raw: pd.DataFrame) -> pd.D
 
 
 def _shap_drivers(request: Request, X: pd.DataFrame) -> List[Dict[str, Any]]:
-    art = _artifacts(request)
-    feature_cols = art["card"]["feature_cols"]
-    raw = X[feature_cols]
-    impacts = []
-    try:
-        import shap
+    from src.explainability.local import shap_drivers
 
-        model = art["churn_model"]
-        try:
-            explainer = shap.TreeExplainer(model)
-        except Exception:  # noqa: BLE001
-            explainer = shap.LinearExplainer(model, raw)
-        values = np.asarray(explainer.shap_values(raw))
-        if values.ndim == 3:
-            values = values[:, :, -1]
-        row = values[0]
-        for j, col in enumerate(feature_cols):
-            impacts.append({
-                "feature": col,
-                "value": float(raw.iloc[0, j]),
-                "shap_impact": round(float(row[j]), 4),
-                "direction": "Increases Churn" if row[j] > 0 else "Decreases Churn",
-            })
-        impacts.sort(key=lambda d: abs(d["shap_impact"]), reverse=True)
-    except Exception:  # noqa: BLE001
-        pass
-    return impacts
+    try:
+        return shap_drivers(_artifacts(request), X)[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"SHAP drivers skipped: {exc}")
+        return []
 
 
 @router.get("/health")
