@@ -68,6 +68,29 @@ def test_persist_results_writes_rows(sqlite_session):
     assert sqlite_session.query(Customer).count() == n
 
 
+def test_rescoring_keeps_one_current_row_per_customer(sqlite_session):
+    from src.models.data_split import FEATURE_COLS
+    from src.serving.batch_score import persist_results
+
+    rng = np.random.RandomState(2)
+    n = 5
+    df = pd.DataFrame({c: rng.uniform(1, 50, n) for c in FEATURE_COLS})
+    df["customer_id"] = np.arange(200, 200 + n, dtype=float)
+    df["spend_last_90d"] = rng.uniform(0, 200, n)
+    df["return_rate"] = rng.uniform(0, 0.2, n)
+    df["engagement_score"] = rng.uniform(0, 100, n)
+    df["is_uk_customer"] = 1
+
+    results = score_customers(df)
+    for _ in range(2):  # e.g. `docker compose up` twice on the same Postgres volume
+        persist_results(results, sqlite_session)
+        sqlite_session.commit()
+
+    assert sqlite_session.query(Prediction).count() == n
+    assert sqlite_session.query(Segment).count() == n
+    assert sqlite_session.query(Recommendation).count() == n
+
+
 def test_db_ensure_engine_falls_back_to_sqlite(monkeypatch, tmp_path):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     db.reset_engine()

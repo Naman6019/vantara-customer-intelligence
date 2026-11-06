@@ -220,6 +220,14 @@ def persist_results(results: pd.DataFrame, session) -> int:
         Segment,
     )
 
+    # Replace these customers' current rows; inserting alone duplicated them on every run,
+    # and the API's joins then multiplied each customer.
+    ids = [float(c) for c in results["customer_id"]]
+    for start in range(0, len(ids), 500):
+        chunk = ids[start:start + 500]
+        for table in (Prediction, Segment, Recommendation):
+            session.query(table).filter(table.customer_id.in_(chunk)).delete(synchronize_session=False)
+
     written = 0
     for _, row in results.iterrows():
         cid = float(row["customer_id"])
