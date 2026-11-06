@@ -32,6 +32,8 @@ models_artifacts/*
 !models_artifacts/clv_model_comparison.csv
 !models_artifacts/five_fold_cv.csv
 !models_artifacts/test_confusion.json
+!models_artifacts/product_recommender.joblib
+!models_artifacts/product_recommender_metrics.json
 
 # MLflow experiment tracking (local file store)
 mlruns/

@@ -46,6 +46,15 @@ stages:
     outs:
       - data/processed/customer_segments.parquet
 
+  recommender:
+    cmd: python -m src.pipeline recommender
+    deps:
+      - data/interim/cleaned_transactions.parquet
+      - src/recommendations/products.py
+    outs:
+      - models_artifacts/product_recommender.joblib
+      - models_artifacts/product_recommender_metrics.json
+
   score:
     cmd: python -m src.serving.batch_score
     deps:

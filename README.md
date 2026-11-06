@@ -9,7 +9,7 @@
 An end-to-end ML platform for omnichannel retail customer analytics: **calibrated
 churn risk**, **90-day customer value**, **value-at-risk retention prioritisation**,
 **probabilistic CLV (BG/NBD + Gamma-Gamma)**, **budget-constrained campaign planning**,
-segmentation, and explainable AI (SHAP **and** LIME) — served through a FastAPI
+**personalised product recommendations**, segmentation, and explainable AI (SHAP **and** LIME) — served through a FastAPI
 service and an API-only Streamlit dashboard, with PostgreSQL persistence and drift
 monitoring.
 
@@ -25,6 +25,7 @@ monitoring.
 | Churn (calibrated) | Test ROC-AUC / recall @ threshold 0.671 | **0.756 / 71.3%** |
 | 90-day value | Validation MAE / top-decile value capture | **£284 / 63.9%** |
 | Probabilistic CLV | BG/NBD + Gamma-Gamma MAE / capture (validation) | £525 / 40.3% |
+| Product recommendations | Test customers buying ≥ 1 of 10 suggestions vs best-sellers | **38.7%** vs 29.1% |
 | Segmentation | K-Means k=4 silhouette / Davies-Bouldin | 0.462 / 0.759 |
 | Coverage | pytest on `src/` + `api/` | **80%** (target ≥ 70%) |
 
@@ -52,7 +53,7 @@ python -m venv .venv && . .venv/Scripts/activate   # Windows: .venv\Scripts\acti
 pip install -r requirements.txt                     # CPU torch is fine
 
 python -m src.pipeline all        # ingest -> clean -> validate -> snapshots -> train
-                                  #   -> segment -> explain -> score
+                                  #   -> segment -> explain -> recommender -> score
 uvicorn api.main:app --port 8000
 streamlit run frontend/dashboard.py
 ```
@@ -76,7 +77,7 @@ Vantara/
 │   │                  train orchestrator, probabilistic_clv (BG/NBD+GG)
 │   ├── segmentation/  K-Means + GMM with business personas
 │   ├── explainability/ SHAP / LIME / PDP
-│   ├── recommendations/ engine (rule table) + campaign (budget planner)
+│   ├── recommendations/ engine (rule table) + campaign (budget planner) + products (item-item)
 │   ├── serving/       SQLAlchemy models, db session, batch_score
 │   ├── monitoring/    drift (PSI)
 │   └── pipeline.py    single-command orchestrator

@@ -100,8 +100,14 @@ def get_customer(request: Request, customer_id: float) -> Dict[str, Any]:
 
 @router.get("/customers/{customer_id}/recommendations")
 def customer_recommendations(request: Request, customer_id: float) -> List[Dict[str, Any]]:
-    """Recommended next products (popularity baseline; replaced by Tier-A recommender)."""
+    """Recommended next products: personalised, or labelled best-sellers if there is no history."""
     from sqlalchemy import text
+
+    from src.recommendations.products import recommend_for_customer
+
+    trained = recommend_for_customer(customer_id, top_k=10)
+    if trained:
+        return trained
 
     if db.get_engine() is None:
         db.ensure_engine()
@@ -124,22 +130,11 @@ def customer_recommendations(request: Request, customer_id: float) -> List[Dict[
             )
         ).fetchall()
 
-    recs = [
-        {"product_id": r[0], "buyers": int(r[1]), "units": float(r[2] or 0)}
+    return [
+        {"product_id": r[0], "buyers": int(r[1]), "units": float(r[2] or 0), "source": "popularity"}
         for r in top
         if r[0] not in bought_ids
     ][:10]
-
-    # If a trained recommender exists, prefer it.
-    try:
-        from src.recommendations.products import recommend_for_customer
-
-        trained = recommend_for_customer(customer_id, top_k=10)
-        if trained:
-            return trained
-    except Exception:  # noqa: BLE001 - fall back to popularity
-        pass
-    return recs
 
 
 @router.get("/customers/{customer_id}/explain")

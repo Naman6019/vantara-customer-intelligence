@@ -1,7 +1,7 @@
 """Single-command pipeline orchestrator (plan D12 / PRD acceptance criterion 1).
 
     python -m src.pipeline all          # ingest -> clean -> validate -> snapshots
-                                         #   -> train -> segment -> explain -> score -> drift
+                                         #   -> train -> segment -> explain -> recommender -> score -> drift
     python -m src.pipeline features     # data + features only
     python -m src.pipeline train        # snapshots + models only
 
@@ -80,6 +80,13 @@ def stage_explain():
     return run_explainability_suite()
 
 
+def stage_recommender():
+    from src.recommendations.products import run_product_recommender
+
+    logger.info("[recommender] item-item recommender, evaluated out-of-time")
+    return run_product_recommender()
+
+
 def stage_batch_score():
     from src.serving.batch_score import run_batch_scoring
 
@@ -100,6 +107,7 @@ def run_all() -> None:
         stage_explain()
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"[explain] skipped: {exc}")
+    stage_recommender()
     stage_batch_score()
     logger.info(f"Pipeline complete in {time.time() - t0:.1f}s")
 
@@ -108,7 +116,7 @@ def main(argv: Optional[list] = None) -> int:
     parser = argparse.ArgumentParser(description="Vantara pipeline orchestrator")
     parser.add_argument(
         "stage",
-        choices=["all", "ingest", "features", "snapshots", "train", "segment", "explain", "score"],
+        choices=["all", "ingest", "features", "snapshots", "train", "segment", "explain", "recommender", "score"],
         nargs="?",
         default="all",
     )
@@ -128,6 +136,8 @@ def main(argv: Optional[list] = None) -> int:
         stage_segment()
     elif args.stage == "explain":
         stage_explain()
+    elif args.stage == "recommender":
+        stage_recommender()
     elif args.stage == "score":
         stage_batch_score()
     return 0

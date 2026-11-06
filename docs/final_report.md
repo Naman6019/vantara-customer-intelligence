@@ -29,6 +29,9 @@ identically. This platform replaces that with a customer-level decision system:
    reported honestly against the supervised model.
 6. **Budget-constrained targeting (Beyond PRD)** — a greedy knapsack planner that
    maximises expected retained value per £ spent, with a save-rate sensitivity grid.
+7. **Personalised product recommendations** — item-item cosine similarity on purchase
+   history replaces best-seller logic. On later purchases, **38.7%** of customers bought at
+   least one of their ten suggestions they had not bought before (best-sellers: 29.1%).
 
 **Stack:** Python 3.11, pandas, scikit-learn, XGBoost, LightGBM, PyTorch, SHAP, LIME,
 Optuna, MLflow, pandera, lifetimes, FastAPI, SQLAlchemy 2, PostgreSQL 15, Streamlit,
@@ -191,6 +194,28 @@ a brute-force optimum in the tests. Because `s` is unmeasured, the API returns a
 grid** over `s ∈ {5%, 10%, 20%}` and a four-policy comparison (top-risk / top-spender /
 rule-table / optimised). *Save-rate values are assumptions and are labelled as such.*
 
+### 6.4 Personalised product recommendations (PRD §1, §2.3; plan P4)
+`src/recommendations/products.py` scores each product by its cosine similarity to what the
+customer already bought, using the top-20 neighbours per product. Each suggestion names the
+customer's own purchase that most supports it. Customers with thin histories are topped up
+with best-sellers, and every row is labelled `personalised` or `popularity`. It is served by
+`GET /customers/{id}/recommendations` and shown in Customer 360.
+
+The evaluation is out-of-time: train on purchases before the cutoff, then test on products
+each customer first bought in the next 90 days. The neighbour count was selected on the
+2011-06-01 validation cutoff, and the 2011-09-01 test cutoff was scored once.
+
+| Test cutoff (2,147 customers), top 10 | Recommender | Best-sellers |
+|:---|---:|---:|
+| Customers who bought at least one suggestion | **38.7%** | 29.1% |
+| Recall@10 | **3.70%** | 1.72% |
+| NDCG@10 | **0.0790** | 0.0436 |
+| Catalogue coverage | **40.6%** | 1.7% |
+
+Recall is low in absolute terms because customers buy many new products in 90 days and only
+ten are suggested. These are offline results on purchase history: the PRD's click-through and
+conversion problem can only be measured in a live A/B test, which has not been run.
+
 ---
 
 ## 7. Model Explainability (XAI)
@@ -222,7 +247,7 @@ rule-table / optimised). *Save-rate values are assumptions and are labelled as s
   (populates predictions/segments/recommendations), the **API** (:8000) and the
   **Streamlit dashboard** (:8501). Credentials come from `.env` (no hard-coded secrets).
 - **Pipeline:** `python -m src.pipeline all` runs ingest → clean → validate → snapshots →
-  train → segment → explain → score. `dvc.yaml` declares the same stages.
+  train → segment → explain → recommender → score. `dvc.yaml` declares the same stages.
 - **Serving:** the API loads artifacts in a FastAPI `lifespan` handler and reads its model,
   feature list and threshold from `models_artifacts/model_card.json` (no hard-coded algorithm).
 - **Monitoring (plan D7):** `/metrics` (Prometheus) for service health; a per-feature **PSI
@@ -289,6 +314,13 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 3. BG/NBD + Gamma-Gamma does not beat the supervised value model here (reported above).
 4. Campaign save rates are assumptions; an A/B test design is the next step.
 5. No real intervention data → no uplift modelling.
+6. Value-model test R² is **0.4887**, below the PRD's 0.60 target (validation: 0.7543). The
+   test window runs into the pre-Christmas peak, which is a likely contributor, though this has
+   not been isolated. The model is used to rank customers, where it captures 58.0% of test
+   value in the top decile, but the target is missed.
+7. Next-purchase probability has no separate model or field. As PRD §16.1 allows, the
+   classifier approximates it directly: P(purchase in 90 days) = 1 − P(churn).
+8. Product recommendations are validated offline only; click-through and conversion are unmeasured.
 
 ---
 
@@ -298,6 +330,7 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 - Real-time ingestion (Kafka/event pipeline) instead of scheduled batch scoring.
 - Role-based access control and multi-tenant auth.
 - Uplift modelling once A/B treatment data exists; measure the true save rate.
+- A/B test product recommendations to measure click-through and conversion.
 - Extend the shared engineering `template/` (P5) into FlowCast and Northgate.
 
 ---
@@ -311,6 +344,9 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 | 90-day windows enforced & tested | Yes (`tests/test_features.py`) |
 | At-risk ranked by calibrated P(churn) × value | Yes API + dashboard |
 | SHAP **and** LIME per customer in the dashboard | Yes `/customers/{id}/explain` |
+| Personalised recommendations beat best-sellers out-of-time | Yes `models_artifacts/product_recommender_metrics.json` |
+| API p95 < 400 ms (PRD §3.2) | Yes: `GET /customers/{id}` 5.7 ms, `POST /predict` 58 ms (development laptop, local SQLite, 100–200 requests) |
+| Segment view < 3 s (PRD §3.2) | Yes: 0.43–0.63 s switching views in an open session, 6 runs (same setup; first page load not timed) |
 | SHAP force plots for low/high/borderline customers | Yes `docs/shap_force_*.png` |
 | 5-fold stratified CV for all six classical models | Yes `models_artifacts/five_fold_cv.csv` |
 | Confusion matrix at the deployed threshold | Yes `docs/confusion_matrix.png` |

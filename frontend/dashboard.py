@@ -290,6 +290,13 @@ def view_customer_360():
         unsafe_allow_html=True,
     )
 
+    recs = api_get(f"/customers/{cid}/recommendations")
+    if isinstance(recs, list) and recs:
+        st.markdown("#### Recommended next products")
+        rdf = pd.DataFrame(recs).reindex(columns=["product_id", "description", "because", "source"])
+        rdf.columns = ["Product", "Description", "Because they bought", "Basis"]
+        st.dataframe(rdf, use_container_width=True, hide_index=True)
+
     explain = api_get(f"/customers/{cid}/explain")
     if isinstance(explain, dict) and explain.get("shap"):
         st.info(explain.get("narrative", ""))
