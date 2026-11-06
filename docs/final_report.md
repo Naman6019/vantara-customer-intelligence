@@ -305,6 +305,7 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 | Churn rate | 55.25% | **50.45%** |
 
 **Documented deviations and negatives (PRD §20.7):**
+
 1. Out-of-time AUC is below the 0.80 target. This is expected: the task is harder when the
    model is scored on a later period, and the cohort excludes long-departed customers who
    made the old problem easy. The lower number is the honest one.

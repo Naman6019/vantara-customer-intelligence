@@ -39,6 +39,29 @@ def _resolve_images(text: str) -> str:
     return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", replace, text)
 
 
+def _font_css() -> str:
+    """Embed DejaVu (shipped with matplotlib) so Greek letters, subscripts and arrows render.
+
+    xhtml2pdf's built-in Helvetica and Courier have no glyphs for them.
+    """
+    import matplotlib
+
+    ttf = Path(matplotlib.get_data_path()) / "fonts" / "ttf"
+    faces = [
+        ("DejaVuSans", "DejaVuSans.ttf", "normal", "normal"),
+        ("DejaVuSans", "DejaVuSans-Bold.ttf", "bold", "normal"),
+        ("DejaVuSans", "DejaVuSans-Oblique.ttf", "normal", "italic"),
+        ("DejaVuSans", "DejaVuSans-BoldOblique.ttf", "bold", "italic"),
+        ("DejaVuMono", "DejaVuSansMono.ttf", "normal", "normal"),
+        ("DejaVuMono", "DejaVuSansMono-Bold.ttf", "bold", "normal"),
+    ]
+    return "\n".join(
+        f'@font-face {{ font-family: {family}; src: url("{(ttf / file).as_posix()}"); '
+        f"font-weight: {weight}; font-style: {style}; }}"
+        for family, file, weight, style in faces
+    )
+
+
 def main() -> int:
     src = ROOT / "docs" / "final_report.md"
     out = ROOT / "docs" / "final_report.pdf"
@@ -47,14 +70,15 @@ def main() -> int:
 
     html_body = markdown.markdown(text, extensions=["tables", "fenced_code", "toc"])
     html = f"""<html><head><meta charset="utf-8"><style>
+    {_font_css()}
     @page {{ size: A4; margin: 1.8cm; }}
-    body {{ font-family: Helvetica, Arial, sans-serif; font-size: 10.5px; color: #0f172a; }}
+    body {{ font-family: DejaVuSans; font-size: 10.5px; color: #0f172a; }}
     h1 {{ font-size: 20px; }} h2 {{ font-size: 15px; margin-top: 16px; }} h3 {{ font-size: 12.5px; }}
     table {{ border-collapse: collapse; width: 100%; margin: 8px 0; }}
     th, td {{ border: 1px solid #cbd5e1; padding: 4px 6px; font-size: 9.5px; }}
     th {{ background: #f1f5f9; }}
-    pre {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px; font-size: 9px; }}
-    code {{ background: #f1f5f9; }}
+    pre {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px; font-size: 9px; font-family: DejaVuMono; }}
+    code {{ background: #f1f5f9; font-family: DejaVuMono; }}
     img {{ max-width: 100%; }}
     </style></head><body>{html_body}</body></html>"""
 
