@@ -15,6 +15,14 @@ html, body, [class*="css"] {
     color: #0F172A !important;
     font-weight: 700 !important;
 }
+/* Text on dark surfaces (sidebar brand, Customer 360 header). The rule above beats
+   inline colours, so these need their own, more specific !important rules. */
+.stApp .on-dark {
+    color: #FFFFFF !important;
+}
+.stApp .on-dark-muted {
+    color: #CBD5E1 !important;
+}
 
 /* Sidebar Styling */
 section[data-testid="stSidebar"] {

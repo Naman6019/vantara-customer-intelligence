@@ -114,6 +114,8 @@ def monitoring_performance(request: Request) -> Dict[str, Any]:
         "model_version": card["model_version"],
         "validation": card.get("validation_metrics", {}),
         "test": card.get("test_metrics", {}),
+        # What the retention team actually gets: metrics at the deployed threshold.
+        "test_at_threshold": card.get("test_metrics", {}).get("operating_point", {}),
         "clv_validation": card.get("clv_validation_metrics", {}),
         "clv_test": card.get("clv_test_metrics", {}),
     }

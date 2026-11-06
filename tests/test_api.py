@@ -54,6 +54,22 @@ def test_metadata_endpoint(client):
     assert data["version"]
 
 
+def test_metadata_recall_is_at_the_deployed_threshold(client):
+    from src.models.model_card import read_model_card
+
+    operating = read_model_card()["test_metrics"]["operating_point"]
+    assert client.get("/metadata").json()["test_recall"] == operating["recall"]
+
+
+def test_performance_reports_the_deployed_operating_point(client):
+    from src.models.model_card import read_model_card
+
+    card = read_model_card()
+    at_threshold = client.get("/monitoring/performance").json()["test_at_threshold"]
+    assert at_threshold["recall"] == card["test_metrics"]["operating_point"]["recall"]
+    assert at_threshold["threshold"] == card["decision_threshold"]
+
+
 def test_predict_single_customer_valid(client):
     r = client.post("/predict", json=_payload())
     assert r.status_code == 200, r.text

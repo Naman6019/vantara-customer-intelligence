@@ -27,6 +27,7 @@ COPY config/ config/
 COPY src/ src/
 COPY api/ api/
 COPY frontend/ frontend/
+COPY .streamlit/ .streamlit/
 COPY scripts/ scripts/
 COPY models_artifacts/ models_artifacts/
 COPY data/interim/cleaned_transactions.parquet data/interim/cleaned_transactions.parquet

@@ -22,7 +22,9 @@ if str(project_root) not in sys.path:
 
 from frontend.theme import CSS  # noqa: E402
 
-API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+# 127.0.0.1, not localhost: on Windows, "localhost" tries IPv6 first and adds ~2 s
+# to every request, because uvicorn listens on IPv4 only by default.
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
 TTL = 60
 
 st.set_page_config(
@@ -106,8 +108,8 @@ with st.sidebar:
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="background: linear-gradient(135deg, #4F46E5, #06B6D4); padding: 8px; border-radius: 8px; color: white; font-size: 18px; font-weight: bold;">🏢</div>
                 <div>
-                    <div style="color: #FFFFFF; font-weight: 700; font-size: 16px;">Vantara Retail</div>
-                    <div style="color: #94A3B8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">CRM Intelligence Suite</div>
+                    <div class="on-dark" style="font-weight: 700; font-size: 16px;">Vantara Retail</div>
+                    <div class="on-dark-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">CRM Intelligence Suite</div>
                 </div>
             </div>
         </div>
@@ -168,7 +170,7 @@ def view_overview():
                 <b>Value model:</b> {meta.get('clv_model')} &nbsp;·&nbsp;
                 <b>Segmentation:</b> {meta.get('segmentation_model')}<br>
                 <b>Test ROC-AUC:</b> {meta.get('test_roc_auc')} &nbsp;·&nbsp;
-                <b>Test recall:</b> {meta.get('test_recall')} &nbsp;·&nbsp;
+                <b>Test recall @ {meta.get('decision_threshold', 0):.3f}:</b> {meta.get('test_recall')} &nbsp;·&nbsp;
                 <b>CLV R²:</b> {meta.get('test_clv_r2')}
             </div>
         </div>
@@ -186,11 +188,12 @@ def view_overview():
 
     if isinstance(perf, dict):
         val, test = perf.get("validation", {}), perf.get("test", {})
+        test_op = perf.get("test_at_threshold", {})
         mdf = pd.DataFrame([
             {"split": "Validation (2011-06-01)", "metric": "ROC-AUC", "value": val.get("roc_auc")},
             {"split": "Validation (2011-06-01)", "metric": "Recall @ threshold", "value": val.get("recall_at_threshold")},
             {"split": "Test (2011-09-01)", "metric": "ROC-AUC", "value": test.get("roc_auc")},
-            {"split": "Test (2011-09-01)", "metric": "Recall", "value": test.get("recall")},
+            {"split": "Test (2011-09-01)", "metric": "Recall @ threshold", "value": test_op.get("recall")},
         ])
         st.markdown("### Out-of-time Performance")
         st.dataframe(mdf.dropna(), use_container_width=True, hide_index=True)
@@ -265,13 +268,13 @@ def view_customer_360():
             <div style="display:flex; gap:16px; align-items:center;">
                 <div class="c360-avatar">{str(int(cid))[:2]}</div>
                 <div>
-                    <div style="font-size:20px;font-weight:700;">Customer {int(cid)}</div>
-                    <div style="color:#CBD5E1;font-size:13px;">{cust.get('persona','—')}</div>
+                    <div class="on-dark" style="font-size:20px;font-weight:700;">Customer {int(cid)}</div>
+                    <div class="on-dark-muted" style="font-size:13px;">{cust.get('persona','—')}</div>
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:26px;font-weight:700;">£{cust.get('value_at_risk',0):,.0f}</div>
-                <div style="color:#CBD5E1;font-size:12px;">Value at Risk</div>
+                <div class="on-dark" style="font-size:26px;font-weight:700;">£{cust.get('value_at_risk',0):,.0f}</div>
+                <div class="on-dark-muted" style="font-size:12px;">Value at Risk</div>
             </div>
         </div>
         """,
@@ -358,7 +361,7 @@ def view_health():
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Test ROC-AUC", perf.get("test", {}).get("roc_auc", "—"))
-    c2.metric("Test Recall", perf.get("test", {}).get("recall", "—"))
+    c2.metric("Test Recall @ threshold", perf.get("test_at_threshold", {}).get("recall", "—"))
     c3.metric("Calibrated Brier", perf.get("test", {}).get("calibrated_brier", "—"))
 
     st.markdown("### Data Drift (PSI vs training reference)")

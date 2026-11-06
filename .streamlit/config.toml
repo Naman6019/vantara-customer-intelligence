@@ -1,0 +1,4 @@
+# The dashboard CSS (frontend/theme.py) assumes a light page; pin it so a
+# dark-mode OS or browser does not render dark text on a dark background.
+[theme]
+base = "light"

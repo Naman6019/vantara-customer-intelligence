@@ -109,16 +109,18 @@ def health_check() -> Dict[str, str]:
 def get_model_metadata(request: Request) -> ModelMetadataResponse:
     """Model metadata read from the model card (no hard-coded metrics)."""
     card = _artifacts(request)["card"]
+    test = card.get("test_metrics", {})
     return ModelMetadataResponse(
         platform="Vantara Retail Solutions Customer Behavior Prediction Platform",
         version=card["model_version"],
         churn_model=card["churn_model"],
         clv_model=card["clv_model"],
         segmentation_model=card.get("segmentation_model", "K-Means"),
-        test_roc_auc=card.get("test_metrics", {}).get("roc_auc", 0.0),
+        test_roc_auc=test.get("roc_auc", 0.0),
         test_clv_r2=card.get("clv_test_metrics", {}).get("r2_score", 0.0),
         decision_threshold=card.get("decision_threshold", 0.5),
-        test_recall=card.get("test_metrics", {}).get("recall", 0.0),
+        # Recall at the deployed threshold, not the 0.5 cut-off the plain "recall" uses.
+        test_recall=test.get("operating_point", test).get("recall", 0.0),
         features_expected=card["feature_cols"],
     )
 
