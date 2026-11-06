@@ -11,9 +11,9 @@ router = APIRouter()
 
 
 class CampaignPlanRequest(BaseModel):
-    budget: float = Field(5000.0, gt=0, description="Total contact budget (£)")
+    budget: Optional[float] = Field(None, gt=0, description="Total contact budget (£); config default if omitted")
     save_rate: float = Field(0.10, gt=0, le=1.0, description="Assumed share of contacted churners retained")
-    limit: int = Field(500, ge=1, le=2000, description="Candidate pool size from the at-risk leaderboard")
+    limit: Optional[int] = Field(None, ge=1, description="Top-N value-at-risk candidates; every scored customer if omitted")
 
 
 @router.post("/campaign/plan")
@@ -42,8 +42,9 @@ def campaign_plan(request: Request, body: Optional[CampaignPlanRequest] = None) 
                 SELECT p.customer_id, p.calibrated_probability, p.predicted_value, p.value_at_risk,
                        p.value_tier, r.channel, r.priority_score
                 FROM predictions p LEFT JOIN recommendations r ON r.customer_id = p.customer_id
-                ORDER BY p.value_at_risk DESC LIMIT :limit
+                ORDER BY p.value_at_risk DESC
                 """
+                + ("LIMIT :limit" if body.limit else "")
             ),
             {"limit": body.limit},
         ).fetchall()
@@ -52,6 +53,7 @@ def campaign_plan(request: Request, body: Optional[CampaignPlanRequest] = None) 
     plan = plan_campaign(candidates, budget=body.budget, save_rate=body.save_rate)
     return {
         "totals": plan["totals"],
+        "n_candidates": len(candidates),
         "n_selected": len(plan["selection"]),
         "selection": plan["selection"][:100],
         "policy_comparison": policy_comparison(candidates, budget=body.budget),

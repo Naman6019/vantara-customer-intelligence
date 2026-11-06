@@ -145,3 +145,26 @@ def test_customer_latency_smoke(client):
         client.get("/customers/12347")
     p95 = (time.perf_counter() - t0) / 30 * 1000
     assert p95 < 400
+
+
+def _scored_customers() -> int:
+    from sqlalchemy import inspect, text
+
+    from src.serving import db
+
+    engine = db.ensure_engine()
+    if engine is None or not inspect(engine).has_table("predictions"):
+        return 0
+    with engine.connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM predictions")).scalar_one()
+
+
+def test_campaign_plan_considers_every_scored_customer_by_default(client):
+    n_scored = _scored_customers()
+    if n_scored == 0:
+        pytest.skip("needs a database filled by the batch scorer (python -m src.pipeline all)")
+    from src.utils.config import load_config
+
+    body = client.post("/campaign/plan", json={}).json()
+    assert body["n_candidates"] == n_scored
+    assert body["totals"]["budget"] == load_config()["campaign"]["default_budget"]

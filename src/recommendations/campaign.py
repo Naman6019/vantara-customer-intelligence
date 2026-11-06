@@ -28,6 +28,11 @@ def _cost(row: Dict[str, Any], costs: Dict[str, float]) -> float:
     return float(costs.get(row.get("channel", "None"), costs.get("Email", 2.0)))
 
 
+def _contactable(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Drop "Monitor only" customers: they get no contact, so no cost and no retained value."""
+    return [r for r in candidates if r.get("channel") not in (None, "None")]
+
+
 def greedy_select(
     candidates: List[Dict[str, Any]],
     budget: float,
@@ -42,7 +47,7 @@ def greedy_select(
     """
     costs = costs or channel_costs()
     scored = []
-    for row in candidates:
+    for row in _contactable(candidates):
         var = float(row.get("value_at_risk", 0.0))
         c = _cost(row, costs)
         expected_gain = save_rate * var - c
@@ -94,6 +99,7 @@ def policy_comparison(
     budget = float(budget if budget is not None else cfg.get("default_budget", 5000.0))
     save_rate = float(cfg.get("default_save_rate", 0.10))
     costs = channel_costs()
+    candidates = _contactable(candidates)
 
     def _evaluate(name: str, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         spent = sum(_cost(r, costs) for r in rows)
@@ -119,9 +125,7 @@ def policy_comparison(
         out, spent = [], 0.0
         for r in rows:
             cost = _cost(r, costs)
-            if r.get("channel") in ("None", None) or cost == 0:
-                out.append(r)
-            elif spent + cost <= budget:
+            if spent + cost <= budget:
                 out.append(r)
                 spent += cost
         return out
@@ -141,7 +145,7 @@ def sensitivity_grid(
 ) -> List[Dict[str, Any]]:
     """Run the optimiser across a grid of budgets x assumed save rates."""
     cfg = load_config().get("campaign", {})
-    budgets = budgets or [1000.0, 5000.0, 20000.0]
+    budgets = budgets or cfg.get("budget_grid", [250.0, 500.0, 1000.0, 2000.0])
     save_rates = save_rates or cfg.get("save_rate_grid", [0.05, 0.10, 0.20])
     rows = []
     for budget in budgets:

@@ -194,6 +194,22 @@ a brute-force optimum in the tests. Because `s` is unmeasured, the API returns a
 grid** over `s ∈ {5%, 10%, 20%}` and a four-policy comparison (top-risk / top-spender /
 rule-table / optimised). *Save-rate values are assumptions and are labelled as such.*
 
+The candidate pool is every scored customer. Customers whose recommended action is
+"Monitor only" are excluded, because they are not contacted and so cost nothing and retain
+nothing. Contacting everyone else costs about £2,200, so the default budget is £500 and the
+grid runs from £250 to £2,000; above that the budget no longer constrains the plan.
+
+| Policy at £500, assumed 10% save rate | Customers contacted | Expected value retained | Retained per £ |
+|:---|---:|---:|---:|
+| **Optimised value-at-risk** | 280 | **£5,990** | **£11.98** |
+| Current rule table (by priority) | 186 | £5,543 | £11.09 |
+| Top spenders | 168 | £3,098 | £6.20 |
+| Top churn probability | 500 | £1,636 | £3.27 |
+
+Targeting by value at risk returns almost four times as much per pound as targeting the
+customers most likely to leave. Absolute figures scale with the assumed save rate and
+channel costs, so the ranking between policies is the robust result, not the pound values.
+
 ### 6.4 Personalised product recommendations (PRD §1, §2.3; plan P4)
 `src/recommendations/products.py` scores each product by its cosine similarity to what the
 customer already bought, using the top-20 neighbours per product. Each suggestion names the

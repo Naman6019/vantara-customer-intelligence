@@ -78,3 +78,26 @@ def test_plan_campaign_defaults():
     result = plan_campaign(_candidates())
     assert "selection" in result and "totals" in result
     assert result["totals"]["budget"] > 0
+
+
+NO_ACTION = {"customer_id": 99, "value_at_risk": 10_000.0, "calibrated_probability": 0.95,
+             "predicted_value": 10_500.0, "channel": "None", "priority_score": 9_000}
+
+
+def test_customers_with_no_action_are_never_contacted():
+    selected, totals = greedy_select(_candidates() + [NO_ACTION], budget=25.0, save_rate=0.10, costs=COSTS)
+    assert 99 not in {r["customer_id"] for r in selected}
+    _, without = greedy_select(_candidates(), budget=25.0, save_rate=0.10, costs=COSTS)
+    assert totals == without
+
+
+def test_policy_comparison_does_not_credit_customers_with_no_action():
+    with_no_action = policy_comparison(_candidates() + [NO_ACTION], budget=25.0)
+    assert with_no_action == policy_comparison(_candidates(), budget=25.0)
+
+
+def test_default_sensitivity_grid_uses_the_configured_budgets():
+    from src.utils.config import load_config
+
+    grid = sensitivity_grid(_candidates())
+    assert sorted({r["budget"] for r in grid}) == sorted(load_config()["campaign"]["budget_grid"])

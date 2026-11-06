@@ -392,10 +392,10 @@ def view_campaign():
         "assumption (no treatment data), so results are shown across a sensitivity grid."
     )
     c1, c2 = st.columns(2)
-    budget = c1.slider("Budget (£)", 1000, 50000, 5000, step=500)
+    budget = c1.slider("Budget (£)", 100, 2500, 500, step=50)
     save_rate = c2.slider("Assumed save rate", 0.02, 0.30, 0.10, step=0.01)
 
-    status, body = api_post("/campaign/plan", json={"budget": float(budget), "save_rate": float(save_rate), "limit": 500})
+    status, body = api_post("/campaign/plan", json={"budget": float(budget), "save_rate": float(save_rate)})
     if status != 200:
         st.error(body.get("detail", "Campaign planning failed"))
         return
