@@ -204,16 +204,19 @@ def view_at_risk():
         return
     segs = api_get("/segments")
     options = ["All"] + [s["persona"] for s in segs] if isinstance(segs, list) else ["All"]
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     persona = c1.selectbox("Segment (persona)", options)
     country = c2.selectbox("Country", ["All", "United Kingdom", "International"])
-    limit = c3.slider("Rows", 10, 500, 100, step=10)
+    tier = c3.selectbox("Value tier", ["All", "High", "Mid", "Low"])
+    limit = c4.slider("Rows", 10, 500, 100, step=10)
 
     params = {"limit": limit}
     if persona != "All":
         params["segment"] = persona
     if country != "All":
         params["country"] = country
+    if tier != "All":
+        params["value_tier"] = tier.lower()
 
     rows = api_get("/customers/at-risk", params)
     if not isinstance(rows, list) or not rows:
@@ -234,11 +237,27 @@ def view_segmentation():
     st.markdown("## Customer Segmentation & Personas")
     if not require_service():
         return
-    segs = api_get("/segments")
-    if not isinstance(segs, list) or not segs:
-        st.info("No segments available yet.")
+    all_segs = api_get("/segments")
+    personas = [s["persona"] for s in all_segs] if isinstance(all_segs, list) else []
+    c1, c2, c3 = st.columns(3)
+    chosen = c1.multiselect("Segments", personas, default=personas)
+    country = c2.selectbox("Country", ["All", "United Kingdom", "International"], key="segment_country")
+    tier = c3.selectbox("Value tier", ["All", "High", "Mid", "Low"], key="segment_value_tier")
+
+    params = {}
+    if country != "All":
+        params["country"] = country
+    if tier != "All":
+        params["value_tier"] = tier.lower()
+    segs = api_get("/segments", params)
+    sdf = pd.DataFrame(segs if isinstance(segs, list) else [])
+    if sdf.empty or not chosen:
+        st.info("No customers match these filters.")
         return
-    sdf = pd.DataFrame(segs)
+    sdf = sdf[sdf["persona"].isin(chosen)]
+    if sdf.empty:
+        st.info("No customers match these filters.")
+        return
     fig = px.scatter(
         sdf, x="avg_churn_prob", y="avg_predicted_value", size="n_customers", color="persona",
         hover_name="persona", title="Persona Map — Risk vs Value (bubble = customers)",

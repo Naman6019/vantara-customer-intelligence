@@ -195,3 +195,29 @@ def test_segments_count_every_high_risk_customer(client):
         n_high = conn.execute(text("SELECT COUNT(*) FROM predictions WHERE risk_tier = 'High'")).scalar_one()
     segments = client.get("/segments").json()
     assert sum(s["n_high_risk"] for s in segments) == n_high
+
+
+def test_at_risk_filters_by_value_tier(client):
+    if _scored_customers() == 0:
+        pytest.skip("needs a database filled by the batch scorer (python -m src.pipeline all)")
+    rows = client.get("/customers/at-risk?value_tier=high&limit=200").json()
+    assert rows
+    assert {r["value_tier"] for r in rows} == {"high"}
+
+
+def test_segments_filter_by_country_and_value_tier(client):
+    if _scored_customers() == 0:
+        pytest.skip("needs a database filled by the batch scorer (python -m src.pipeline all)")
+    from sqlalchemy import text
+
+    from src.serving import db
+
+    with db.ensure_engine().connect() as conn:
+        expected = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM predictions p JOIN customers c ON c.customer_id = p.customer_id "
+                "WHERE c.primary_country = 'United Kingdom' AND p.value_tier = 'mid'"
+            )
+        ).scalar_one()
+    segments = client.get("/segments?country=United Kingdom&value_tier=mid").json()
+    assert sum(s["n_customers"] for s in segments) == expected

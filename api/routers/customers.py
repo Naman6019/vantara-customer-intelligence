@@ -53,12 +53,30 @@ def _as_dict(value: Any) -> Dict[str, Any]:
     return {}
 
 
+def _filters(
+    segment: Optional[str], country: Optional[str], value_tier: Optional[str]
+) -> tuple[str, Dict[str, Any]]:
+    """SQL conditions (on predictions `p` and segments `s`) shared by the list views."""
+    sql, params = "", {}
+    if segment:
+        sql += " AND s.persona LIKE :segment"
+        params["segment"] = f"%{segment}%"
+    if country:
+        sql += " AND p.customer_id IN (SELECT customer_id FROM customers WHERE primary_country = :country)"
+        params["country"] = country
+    if value_tier:
+        sql += " AND p.value_tier = :value_tier"
+        params["value_tier"] = value_tier.lower()
+    return sql, params
+
+
 @router.get("/customers/at-risk")
 def at_risk_customers(
     request: Request,
     limit: int = Query(50, ge=1, le=500),
     segment: Optional[str] = None,
     country: Optional[str] = None,
+    value_tier: Optional[str] = Query(None, pattern="^(?i)(low|mid|high)$"),
 ) -> List[Dict[str, Any]]:
     """Value-at-risk leaderboard, sorted by calibrated P(churn) x predicted value."""
     from sqlalchemy import text
@@ -77,14 +95,9 @@ def at_risk_customers(
         LEFT JOIN recommendations r ON r.customer_id = p.customer_id
         WHERE 1=1
     """
-    params: Dict[str, Any] = {"limit": limit}
-    if segment:
-        sql += " AND s.persona LIKE :segment"
-        params["segment"] = f"%{segment}%"
-    if country:
-        sql += " AND p.customer_id IN (SELECT customer_id FROM customers WHERE primary_country = :country)"
-        params["country"] = country
-    sql += " ORDER BY p.value_at_risk DESC LIMIT :limit"
+    where, params = _filters(segment, country, value_tier)
+    sql += where + " ORDER BY p.value_at_risk DESC LIMIT :limit"
+    params["limit"] = limit
 
     with engine.connect() as conn:
         rows = conn.execute(text(sql), params).fetchall()
@@ -251,8 +264,12 @@ def explain_customer(request: Request, customer_id: float) -> Dict[str, Any]:
 
 
 @router.get("/segments")
-def segments_overview(request: Request) -> List[Dict[str, Any]]:
-    """Aggregate the segmentation table into per-persona summary statistics."""
+def segments_overview(
+    request: Request,
+    country: Optional[str] = None,
+    value_tier: Optional[str] = Query(None, pattern="^(?i)(low|mid|high)$"),
+) -> List[Dict[str, Any]]:
+    """Per-persona summary statistics, optionally for one country and value tier."""
     from sqlalchemy import text
 
     if db.get_engine() is None:
@@ -261,7 +278,8 @@ def segments_overview(request: Request) -> List[Dict[str, Any]]:
     if engine is None:
         raise HTTPException(status_code=503, detail="Database not configured")
 
-    sql = """
+    where, params = _filters(None, country, value_tier)
+    sql = f"""
         SELECT s.persona,
                COUNT(*) AS n_customers,
                SUM(CASE WHEN p.risk_tier = 'High' THEN 1 ELSE 0 END) AS n_high_risk,
@@ -270,9 +288,10 @@ def segments_overview(request: Request) -> List[Dict[str, Any]]:
                SUM(p.value_at_risk) AS total_value_at_risk
         FROM segments s
         LEFT JOIN predictions p ON p.customer_id = s.customer_id
+        WHERE 1=1 {where}
         GROUP BY s.persona
         ORDER BY total_value_at_risk DESC
     """
     with engine.connect() as conn:
-        rows = conn.execute(text(sql)).fetchall()
+        rows = conn.execute(text(sql), params).fetchall()
     return _rows_to_dicts(rows)
