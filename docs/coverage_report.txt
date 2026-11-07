@@ -1,0 +1,42 @@
+........................................................................ [ 40%]
+........................................................................ [ 81%]
+................................                                         [100%]
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.11.15-final-0 _______________
+
+Name                              Stmts   Miss  Cover   Missing
+---------------------------------------------------------------
+api\main.py                          35      8    77%   25-27, 58-59, 68, 80-82
+api\routers\customers.py            150     21    86%   46, 51-53, 62-63, 85, 88, 113, 116, 148, 151, 185, 188, 199, 217-218, 252-253, 276, 279
+api\routers\monitoring.py            54      6    89%   33, 36, 70, 73, 79, 99
+api\routers\predictions.py          107      8    93%   39, 62, 81-83, 164, 182-183
+api\state.py                         30      9    70%   27, 37, 39, 47-48, 55-56, 59-60
+src\data\cleaner.py                  76      2    97%   49-50
+src\data\contracts.py                38     18    53%   50-57, 64-66, 80-89
+src\data\loader.py                   87     16    82%   57, 91-92, 125-126, 132-142
+src\explainability\explainer.py     126     14    89%   34-37, 217-227
+src\explainability\local.py          38      2    95%   32, 49
+src\features\builder.py             155     21    86%   65, 81-85, 99, 329, 361-376
+src\features\engagement.py           42      3    93%   48, 51, 64
+src\features\snapshots.py            66     13    80%   34, 62, 91, 122-133
+src\models\calibration.py            71      8    89%   43-46, 59, 63, 119-123
+src\models\churn_models.py          136     12    91%   86, 139, 150, 213, 237, 247, 253-255, 325-328
+src\models\clv_regressor.py          76      9    88%   41, 50, 90, 131-133, 173-176
+src\models\data_split.py             99     14    86%   71, 81-90, 149, 154, 156, 218, 225, 242-243
+src\models\dl_models.py             228     17    93%   123-124, 302, 408-430
+src\models\model_card.py             41      3    93%   31, 97-98
+src\models\probabilistic_clv.py      70     22    69%   71, 88, 133-153, 157-165
+src\models\train.py                 150    150     0%   14-331
+src\monitoring\drift.py              67     21    69%   44-52, 62, 64, 69, 74, 97-99, 103-110
+src\pipeline.py                      93     71    24%   22-25, 29-32, 36-43, 47-50, 54-59, 63-66, 70-73, 77-80, 84-87, 91-94, 98-112, 125-143, 147
+src\recommendations\engine.py        68      7    90%   30, 50, 64-66, 68, 119
+src\recommendations\products.py     144     18    88%   227-255
+src\segmentation\clusterer.py       112      9    92%   192-200
+src\serving\batch_score.py          168     47    72%   47-48, 90-91, 99, 188-190, 223, 272-304, 309-328, 332-335
+src\serving\db.py                    54      6    89%   35, 44, 61, 66-68
+---------------------------------------------------------------
+TOTAL                              2878    555    81%
+
+19 files skipped due to complete coverage.
+Coverage HTML written to dir htmlcov
+176 passed in 53.56s

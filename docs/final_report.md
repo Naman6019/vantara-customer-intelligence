@@ -274,8 +274,15 @@ conversion problem can only be measured in a live A/B test, which has not been r
   drift report** vs the training reference; and delayed-label performance from the backtest.
   The December batch flags `frequency` (PSI 0.47), `interpurchase_interval_std` (0.45) and
   `purchase_frequency_trend` (0.38) — expected, since the Christmas trading window shifts cadence.
-- **Quality gates:** ruff clean, mypy configured, **pytest with 80% coverage** on `src/`+`api/`
-  (PRD requires ≥ 70%), GitHub Actions CI on every push.
+- **Quality gates:** ruff clean, mypy configured, **176 pytest tests with 81% coverage** on
+  `src/`+`api/` (PRD requires ≥ 70%), GitHub Actions CI on every push. The coverage report is
+  saved as `docs/coverage_report.txt` (`.	asks.ps1 coverage`), and CI uploads the XML and
+  HTML reports as a build artifact.
+- **Diagrams:** `docs/architecture_diagram.png`, `docs/er_diagram.png` and
+  `docs/workflow_diagram.png` (build → score and serve → act and monitor), all regenerated
+  by `scripts/make_diagrams.py`.
+- **Dashboard filters (PRD §12.2):** the segmentation view filters by segment, country and
+  value tier; the at-risk leaderboard filters by segment, country and value tier.
 
 ---
 
@@ -373,7 +380,8 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 | Confusion matrix at the deployed threshold | Yes `docs/confusion_matrix.png` |
 | ANN/LSTM training-vs-validation loss curves | Yes `docs/loss_curves.png` |
 | `/metrics`, drift report, Model Health page | Yes |
-| Test coverage on `src/` (+`api/`) ≥ 70% | Yes 80% |
+| Test coverage on `src/` (+`api/`) ≥ 70% | Yes 81% (`docs/coverage_report.txt`) |
+| Architecture, ER and workflow diagrams in `docs/` | Yes |
 | Final report PDF with regenerated tables | Yes `docs/final_report.pdf` |
 
 — *Vantara Retail Solutions Data Science Division* —

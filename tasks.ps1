@@ -1,7 +1,7 @@
 # Task runner for Windows PowerShell (wraps the same commands as the Makefile / DVC).
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("setup", "pipeline", "features", "train", "serve", "dashboard", "test", "lint", "compose")]
+    [ValidateSet("setup", "pipeline", "features", "train", "serve", "dashboard", "test", "coverage", "lint", "compose")]
     [string]$Task = "test"
 )
 
@@ -13,6 +13,8 @@ switch ($Task) {
     "serve"     { .\.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000 }
     "dashboard" { .\.venv\Scripts\python.exe -m streamlit run frontend/dashboard.py }
     "test"      { .\.venv\Scripts\python.exe -m pytest --cov=src --cov=api }
+    # Saved report for the deliverables (docs/coverage_report.txt) plus browsable htmlcov/.
+    "coverage"  { .\.venv\Scripts\python.exe -m pytest -q --cov=src --cov=api --cov-report=term-missing:skip-covered --cov-report=html -p no:warnings | Out-File -Encoding utf8 docs/coverage_report.txt }
     "lint"      { .\.venv\Scripts\python.exe -m ruff check .; .\.venv\Scripts\python.exe -m ruff format --check . }
     "compose"   { docker compose up --build }
 }
