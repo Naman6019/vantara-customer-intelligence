@@ -1,6 +1,7 @@
 # Vantara walkthrough video
 
-The Day 20 "recorded walkthrough" (PRD §17), built with [Remotion](https://www.remotion.dev/):
+The Day 20 "recorded walkthrough" (PRD §17), built with [Remotion](https://www.remotion.dev/).
+The finished video is [`docs/walkthrough.mp4`](../docs/walkthrough.mp4); this folder is its source:
 animated scenes for the story and results, plus real screen recordings of the running
 Docker stack. Narration follows [script.md](script.md).
 

@@ -7,6 +7,10 @@
 > because the original random split leaked future information; §10 explains the
 > difference. All tables are regenerated from MLflow, the model card and the
 > evaluation artifacts by `scripts/make_report_tables.py`.
+>
+> **Walkthrough video (PRD §17, Day 20):** `docs/walkthrough.mp4` (4:22, 1080p), also linked
+> from the README. Music: "Cruising" by Dosi & Aisake [NCS Release], provided by
+> NoCopyrightSounds (http://ncs.io/Cruising).
 
 ---
 
@@ -368,6 +372,7 @@ AUC and R² look better than the model really is. The corrected, honest comparis
 | Check | Result |
 |:---|:---|
 | `docker compose up --build` on a clean clone | API :8000 + dashboard :8501 + populated DB |
+| Recorded walkthrough (PRD §17, Day 20) | Yes `docs/walkthrough.mp4` |
 | Out-of-time evaluation, test used once | Yes (asserted in `tests/test_data_split.py`) |
 | 90-day windows enforced & tested | Yes (`tests/test_features.py`) |
 | At-risk ranked by calibrated P(churn) × value | Yes API + dashboard |

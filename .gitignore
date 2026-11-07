@@ -8,6 +8,9 @@ data/raw/*
 !data/raw/.gitkeep
 data/interim/*
 !data/interim/.gitkeep
+# The Docker image bakes in the cleaned transactions (7 MB) so a fresh clone builds
+# and scores without re-downloading UCI Online Retail II (CC BY 4.0, credited in README).
+!data/interim/cleaned_transactions.parquet
 data/processed/*
 !data/processed/.gitkeep
 

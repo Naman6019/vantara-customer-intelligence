@@ -18,6 +18,22 @@ monitoring.
 
 ---
 
+## Walkthrough video (4:22)
+
+[![Watch the walkthrough](docs/walkthrough_poster.jpg)](docs/walkthrough.mp4)
+
+**[docs/walkthrough.mp4](docs/walkthrough.mp4)** (1080p, 43 MB) is the recorded walkthrough
+asked for in PRD §17 (Day 20): the problem, the leak-free pipeline, out-of-time results
+(including the two missed targets), then live footage of the Docker stack: the value-at-risk
+leaderboard, the campaign planner, one customer's SHAP and LIME explanation with product
+suggestions, and a live `/predict` call. It was recorded with 173 tests; the suite has since
+grown to 176. How it was made: [video/README.md](video/README.md).
+
+Music: "Cruising" by Dosi & Aisake [NCS Release]. Music provided by NoCopyrightSounds.
+Free Download/Stream: http://ncs.io/Cruising · Watch: http://ncs.lnk.to/CruisingAT/youtube
+
+---
+
 ## Results at a glance (out-of-time)
 
 | Task | Metric | Value |
@@ -161,4 +177,9 @@ pre-commit install             # optional local hooks
 ## License & attribution
 
 Dataset: Chen, D. (2012). *Online Retail II* [Dataset]. UCI Machine Learning Repository,
-distributed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+distributed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The cleaned
+extract in `data/interim/cleaned_transactions.parquet` is included so the Docker image builds
+from a fresh clone.
+
+Walkthrough music: "Cruising" by Dosi & Aisake [NCS Release], provided by NoCopyrightSounds
+(http://ncs.io/Cruising).
