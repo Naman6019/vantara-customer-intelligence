@@ -108,3 +108,21 @@ def test_db_init_engine_with_url(tmp_path):
         session.add(Customer(customer_id=1.0))
     assert engine is not None
     db.reset_engine()
+
+
+def test_rescoring_updates_a_customers_country(sqlite_session):
+    from src.models.data_split import FEATURE_COLS
+    from src.serving.batch_score import persist_results
+
+    rng = np.random.RandomState(3)
+    df = pd.DataFrame({c: rng.uniform(1, 50, 1) for c in FEATURE_COLS})
+    df["customer_id"] = [300.0]
+    df["spend_last_90d"] = 100.0
+    df["return_rate"] = 0.1
+    df["engagement_score"] = 50.0
+
+    for is_uk, expected in ((1, "United Kingdom"), (0, "International")):
+        df["is_uk_customer"] = is_uk
+        persist_results(score_customers(df), sqlite_session)
+        sqlite_session.commit()
+        assert sqlite_session.get(Customer, 300.0).primary_country == expected

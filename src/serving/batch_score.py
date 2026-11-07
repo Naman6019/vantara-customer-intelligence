@@ -211,8 +211,12 @@ def persist_results(results: pd.DataFrame, session) -> int:
     written = 0
     for _, row in results.iterrows():
         cid = float(row["customer_id"])
-        if session.get(Customer, cid) is None:
-            session.add(Customer(customer_id=cid, primary_country=str(row.get("primary_country", "United Kingdom"))))
+        country = str(row.get("primary_country", "United Kingdom"))
+        customer = session.get(Customer, cid)
+        if customer is None:
+            session.add(Customer(customer_id=cid, primary_country=country))
+        else:
+            customer.primary_country = country  # rescoring keeps it current
 
         feature_vec = row.get("_features")
         if feature_vec is None or (isinstance(feature_vec, float) and np.isnan(feature_vec)):
