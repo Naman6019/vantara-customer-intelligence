@@ -9,3 +9,7 @@ out
 # Raw screen footage and voice recordings: large and regenerable
 public/footage/
 public/voice/
+
+# Background music: third-party (NCS) or generated, so kept out of git
+public/music/
+elevenlabs-mp3/

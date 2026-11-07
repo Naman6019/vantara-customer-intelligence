@@ -1,0 +1,3 @@
+The same predictions are available through a documented REST A P I. A customer lookup takes about six milliseconds at the ninety-fifth percentile, and a full prediction under sixty milliseconds, well inside the four hundred millisecond target.
+
+The whole stack starts with one command, and a hundred and seventy-three automated tests cover more than eighty percent of the code.

@@ -1,0 +1,3 @@
+Vantara's retention team decides who to contact using simple rules, like no order in ninety days. That has three costs. Marketing money is spread evenly instead of where it matters. Valuable customers are noticed only after they've already gone quiet. And product suggestions are just best sellers.
+
+I built a platform that replaces each of those rules with a prediction, and every prediction comes with a reason.

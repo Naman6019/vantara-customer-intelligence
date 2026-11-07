@@ -235,7 +235,9 @@ const scenes = {
     });
   },
 
-  // §5: one customer explained, from the header card to SHAP and LIME.
+  // §5: one customer explained, from the header card to SHAP and LIME. Holds follow
+  // the narration (public/voice/05-customer.mp3): risk and action until ~13 s,
+  // suggestions until ~30 s, then SHAP and LIME.
   async customer360(page) {
     await openDashboard(page);
     await openView(page, "Customer 360");
@@ -250,12 +252,12 @@ const scenes = {
       await sleep(400);
       await streamlitIdle(page, 800);
       await moveTo(page, 1100, 360, 900);
-      await sleep(3500);
+      await sleep(8400);
       await moveTo(page, 1250, 700, 600);
       await smoothScroll(page, 430, 1800);
-      await sleep(4000);
+      await sleep(14600);
       await smoothScroll(page, 560, 1800);
-      await sleep(4500);
+      await sleep(4000);
       await smoothScroll(page, 420, 1500);
       await sleep(4500);
     });

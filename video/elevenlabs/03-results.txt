@@ -1,0 +1,5 @@
+I evaluated everything out of time: train on the past, then test once on a later period the model has never seen. That's harder than a random split, and it shows in the numbers.
+
+At its operating threshold, the churn model catches seventy-one percent of customers who go on to leave: one thousand five hundred and fifty-six out of two thousand one hundred and eighty-one. That meets the seventy percent recall target. Its A U C is zero point seven six, below the zero point eight target.
+
+The value model is good at ranking: the top tenth of customers it picks hold fifty-eight percent of the next quarter's value. But its R-squared on the test period is zero point four nine, short of the zero point six target. Both misses are explained in the final report.

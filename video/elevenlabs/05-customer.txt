@@ -1,0 +1,5 @@
+Open any customer and you can see why. This one has an eighty-four percent churn risk and hasn't ordered in two hundred and seventy-four days, so the recommended action is an automated win-back email.
+
+Below that are product suggestions, personalised from purchase history, and each one names the past purchase it comes from. Tested on later purchases, thirty-nine percent of customers bought at least one of their ten suggestions that they had not bought before, compared with twenty-nine percent for best sellers.
+
+And SHAP and LIME agree on what drives this customer's risk: low engagement and a long gap since the last order, both calculated live by the A P I.

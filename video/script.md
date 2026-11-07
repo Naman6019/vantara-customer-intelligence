@@ -1,4 +1,4 @@
-# Vantara walkthrough: narration script (draft 2)
+# Vantara walkthrough: narration script (draft 3)
 
 **Target length:** about 5 minutes: roughly 600 spoken words (about 4¼ minutes at 140 words
 per minute), plus pauses while the footage plays.
@@ -7,6 +7,9 @@ per minute), plus pauses while the footage plays.
 Edit freely so it sounds like you. Every number below comes from the final report or from
 measurements taken on the running app; if you change one, tell me so the on-screen
 graphics match.
+
+**Music:** "Cruising" by Dosi & Aisake [NCS Release] plays quietly underneath; it is
+credited on the end card and must be credited in the video description (see README).
 
 **Recording:** one audio file per section (`01-problem.wav` … `07-next.wav`), in a quiet room,
 mic about a hand-width from your mouth. Leave a second of silence at the start and end of
@@ -64,34 +67,35 @@ each file. Retakes only need to redo that one section.
 > two hundred and sixty-nine customers, and the list puts the most valuable first, not just
 > the most likely to leave.
 >
-> The campaign planner takes a budget, here five hundred pounds, and picks who to contact to
-> get the most expected value back per pound. Compared on the same budget, targeting by value
-> at risk returns more than four times as much per pound as simply contacting the customers
-> most likely to leave.
->
-> Those pound figures rest on an assumed save rate, because there's no experiment data yet,
-> so the planner also shows how the answer changes across a range of save rates.
+> The campaign planner takes a budget, here five hundred pounds, and picks who to contact for
+> the most value back per pound. On the same budget, targeting by value at risk returns more
+> than four times as much per pound as contacting the customers most likely to leave. Those
+> figures rest on an assumed save rate, so the planner also shows the answer across a range of
+> save rates.
 
 ## 5. One customer, explained (3:00 – 3:50) · live footage
 
-**On screen:** Customer 360 for one customer; SHAP and LIME charts; recommended products.
+**On screen:** Customer 360 for customer 14603; recommended products; SHAP and LIME charts.
 
-> Open any customer and you can see why. Here's their churn risk, predicted value, segment and
-> recommended action. SHAP and LIME show which behaviours drive the score, calculated live by
-> the API.
+> Open any customer and you can see why. This one has an eighty-four percent churn risk and
+> hasn't ordered in two hundred and seventy-four days, so the recommended action is an
+> automated win-back email.
 >
-> Below that are product suggestions. They're personalised from purchase history, and each
-> one names the past purchase it comes from. Tested on later purchases, thirty-nine percent of
-> customers bought at least one of their ten suggestions that they had not bought before,
-> compared with twenty-nine percent for best-sellers.
+> Below that are product suggestions, personalised from purchase history, and each one names
+> the past purchase it comes from. Tested on later purchases, thirty-nine percent of customers
+> bought at least one of their ten suggestions that they had not bought before, compared with
+> twenty-nine percent for best-sellers.
+>
+> And SHAP and LIME agree on what drives this customer's risk: low engagement and a long gap
+> since the last order, both calculated live by the API.
 
 ## 6. Fast, and easy to run (3:50 – 4:25) · live footage
 
 **On screen:** Swagger docs, a live `/predict` call; terminal running `docker compose up`.
 
 > The same predictions are available through a documented REST API. A customer lookup takes
-> about six milliseconds at the ninety-fifth percentile, and a full prediction under sixty,
-> well inside the four-hundred-millisecond target.
+> about six milliseconds at the ninety-fifth percentile, and a full prediction under sixty
+> milliseconds, well inside the four-hundred-millisecond target.
 >
 > The whole stack starts with one command, and a hundred and seventy-three automated tests
 > cover more than eighty percent of the code.

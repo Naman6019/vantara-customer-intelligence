@@ -1,0 +1,3 @@
+It starts from the U C I Online Retail Two dataset: just over a million real transaction lines from a U K online retailer, covering two years. One command cleans the data, checks it against data contracts, and builds ten monthly customer snapshots, giving more than thirty-six thousand training rows.
+
+The rule that matters most is that every feature uses only what was known before its cutoff date, and the tests enforce that. The models, segments, explanations and recommendations are then written to a database that the A P I and dashboard read from.
